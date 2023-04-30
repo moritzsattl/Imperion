@@ -18,7 +18,7 @@ public class Imperion extends AbstractRealTimeGameAgent {
 
     @Override
     protected void onGameUpdate(Object action, ActionResult result) {
-
+        System.out.println();
     }
 
     @Override
