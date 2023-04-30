@@ -1,6 +1,0 @@
-Manifest-Version: 1.0
-Sge-Type: agent
-Agent-Name: Imperion
-Main-Class: at.ac.tuwien.ifs.sge.agent.Imperion
-Sge-Realtime: true
-
