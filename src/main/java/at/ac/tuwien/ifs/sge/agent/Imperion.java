@@ -10,7 +10,10 @@ import at.ac.tuwien.ifs.sge.core.util.Util;
 import at.ac.tuwien.ifs.sge.core.util.node.RealTimeGameNode;
 import at.ac.tuwien.ifs.sge.core.util.tree.DoubleLinkedTree;
 import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
+import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
+import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
+import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 
 import java.util.*;
 import java.util.concurrent.Future;
@@ -93,6 +96,12 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         thread = pool.submit(this::play);
     }
 
+    public void sendAction(A action, long executionTimeMs) {
+        var event = new GameActionEvent<>(playerId, action, executionTimeMs);
+        log.trace("sent action: " + action);
+        serverConnection.sendMessage(event);
+    }
+
     // Calculates the upper confidence bound (UCB) from mcts node
     private double upperConfidenceBound(Tree<GameStateNode<A>> tree, double c) {
         double w = tree.getNode().getWinsForPlayer(playerId);
@@ -120,10 +129,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         var game = node.getGame();
         var nextGameState = game.copy();
 
-        Map<Integer, A> actionsTaken = new HashMap<>();
+        Map<Integer, MacroActionType> actionsTaken = new HashMap<>();
         Tree<GameStateNode<A>> expandedTree = null;
 
-        int EXPAND_NODES_COUNT = 2;
+        int EXPAND_NODES_COUNT = 1;
 
         for (int i = 1; i <= EXPAND_NODES_COUNT; i++) {
 
@@ -131,90 +140,19 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             for (var playerId = 0; playerId < game.getNumberOfPlayers(); playerId++) {
 
                 // Pop one action from unexplored actions
-                var action = node.popUnexploredAction(playerId);
+                var actionType = node.popUnexploredAction(playerId);
 
-                // Schedule action
-                if (action != null && nextGameState.isValidAction(action, playerId)) {
-                    nextGameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, game.getGameClock().getGameTimeMs() + 1));
-                    actionsTaken.put(playerId,action);
-                }
-            }
-
-            try {
-                nextGameState.advance(DEFAULT_SIMULATION_PACE_MS);
-            } catch (ActionException e) {
-                log.info("[ERROR] in expansion: "+ e);
-                continue;
-            }
-
-            expandedTree = new DoubleLinkedTree<>(new GameStateNode<A>(nextGameState, actionsTaken));
-            actionsTaken = new HashMap<>();
-
-            tree.add(expandedTree);
-        }
-
-        if(expandedTree == null){
-            return tree;
-        }
-
-        return expandedTree;
-    }
-
-
-
-    private Tree<GameStateNode<A>> expansionOld(Tree<GameStateNode<A>> tree) {
-        var node = tree.getNode();
-        var game = node.getGame();
-        var nextGameState = game.copy();
-
-        List<Stack<A>> possibleActions = new ArrayList<>();
-
-        int EXPAND_COUNT = 2;
-
-        // Fetch two actions from each player
-        for (int i = 0; i < EXPAND_COUNT; i++) {
-
-            for (var playerId = 0; playerId < game.getNumberOfPlayers(); playerId++) {
-                if(i == 0){
-                    possibleActions.add(new Stack<>());
+                try{
+                    executeAction(actionType,playerId,node,true);
+                }catch (ActionException e){
+                    log.info("[ERROR] while advancing the game in expansion" + e);
+                    continue;
                 }
 
-                if(node.hasUnexploredActions(playerId)) {
-                    possibleActions.get(playerId).add(node.popUnexploredAction(playerId));
-                }
+                // If actions were successfully executed, by each player
+                actionsTaken.put(playerId,actionType);
+                expandedTree = new DoubleLinkedTree<>(new GameStateNode<A>(nextGameState,actionsTaken));
             }
-        }
-
-        Tree<GameStateNode<A>> expandedTree = null;
-
-        for (int i = 0; i < EXPAND_COUNT; i++) {
-
-            Map<Integer, A> actionsTaken = new HashMap<>();
-
-            // Collect i-th-actions from each player
-            for (int playerId = 0; playerId < game.getNumberOfPlayers(); playerId++) {
-                A action = null;
-                if(!possibleActions.get(playerId).isEmpty()){
-                    action = possibleActions.get(playerId).pop();
-                }
-
-                // Schedule those actions
-                if (action != null && nextGameState.isValidAction(action, playerId)) {
-                    nextGameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, game.getGameClock().getGameTimeMs() + 1));
-                    actionsTaken.put(playerId,action);
-                }
-            }
-
-            // Try to advance game
-            try {
-                nextGameState.advance(DEFAULT_SIMULATION_PACE_MS);
-            } catch (ActionException e) {
-                log.info("[ERROR] in expansion: "+ e);
-                continue;
-            }
-
-            // if advancing was possible
-            expandedTree = new DoubleLinkedTree<>(new GameStateNode<A>(nextGameState, actionsTaken));
             tree.add(expandedTree);
 
         }
@@ -236,10 +174,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 // Apply random action for each player and advance game
                 for (var playerId = 0; playerId < game.getNumberOfPlayers(); playerId++) {
-                    var possibleActions = game.getPossibleActions(playerId);
+                    var possibleActions = node.getAllPossibleMacroActionsByAllPlayer();
                     if (possibleActions.size() > 0) {
-                        var nextAction = Util.selectRandom(possibleActions);
-                        game.scheduleActionEvent(new GameActionEvent<>(playerId, nextAction, game.getGameClock().getGameTimeMs() + 1));
+                        var nextAction = Util.selectRandom(possibleActions.get(playerId));
+                        executeAction(nextAction,playerId,node,true);
                     }
                 }
 
@@ -301,59 +239,74 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         return s;
     }
 
+
+    private void executeAction(MacroActionType actionType,int playerId, GameStateNode<A> advancedGameState, boolean simulate) throws ActionException {
+        MacroAction<A> macroAction = new MacroActionFactory().createMacroAction(actionType, advancedGameState, playerId, log);
+
+        if(macroAction instanceof MoveMacroAction<A>){
+            MoveAction<A> moveAction = ((MoveMacroAction<A>) macroAction).generateExecutableAction();
+
+            List<Position> path = moveAction.getResponsibleActions();
+
+            A lastDeterminedAction = null;
+            for (var position : path) {
+                var gameState = game.copy();
+
+                // Scheduling event
+                if (lastDeterminedAction != null && game.isValidAction(lastDeterminedAction, playerId)) {
+                    game.scheduleActionEvent(new GameActionEvent<>(playerId, lastDeterminedAction, gameState.getGameClock().getGameTimeMs() + 1));
+                }
+
+                // Advancing the game
+                gameState.advance(DEFAULT_DECISION_PACE_MS + 50);
+
+
+                A action = (A) new MovementStartOrder(moveAction.getUnit(),position);
+
+                if(!simulate){
+                    // Send action to server
+                    sendAction((A) action,System.currentTimeMillis() + 50);
+                }
+
+
+                lastDeterminedAction = action;
+            }
+        }
+
+    }
+
+
     public void play() {
         log.info("start play()");
-        A lastDeterminedAction = null;
 
-
+        MacroActionType lastDeterminedActionType = null;
         while (true) {
             try {
-                // Copy the game state and apply the last determined action, since this action was not yet accepted and sent back
-                // from the engine server at this point in time
                 var gameState = game.copy();
-                if (lastDeterminedAction != null && gameState.isValidAction(lastDeterminedAction, playerId)) {
-                    gameState.scheduleActionEvent(new GameActionEvent<>(playerId, lastDeterminedAction, gameState.getGameClock().getGameTimeMs() + 1));
-                }
                 // Advance the game state in time by the decision pace since this is the point in time that the next best action will be sent
-                try {
-                    gameState.advance(DEFAULT_DECISION_PACE_MS + 50);
-                } catch (ActionException e) {
-                    log.info("[ERROR] during gameState.advance()");
-                    log.printStackTrace(e);
-                    continue;
-                }
-
                 // Create a new tree with the game state as root
                 var advancedGameState = new DoubleLinkedTree<>(new GameStateNode<>(gameState, null));
 
+                if(lastDeterminedActionType != null){
+                    executeAction(lastDeterminedActionType,playerId,advancedGameState.getNode(),false);
+                }
                 // Tell the garbage collector to try recycling/reclaiming unused objects
                 System.gc();
-
 
                 var iterations = 0;
                 var now = System.currentTimeMillis();
                 var timeOfNextDecision = now + DEFAULT_DECISION_PACE_MS;
 
 
-                // Select actions randomly
-                // List<A> actions = new ArrayList<>();
-                // actions.add(null);
-
-                // for (int i = 0; i < advancedGameState.getNrOfUnexploredActions(); i++) {
-                //     //log.info("Action " + i + "/" + advancedGameState.getNrOfUnexploredActions());
-                //     actions.add(advancedGameState.popUnexploredAction());
-                // }
-
-                // log.info(actions);
                 //log.info("Before MCTS: \n" + printTree(advancedGameState,"",0));
 
                 while (System.currentTimeMillis() < timeOfNextDecision) {
-                    //lastDeterminedAction = Util.selectRandom(actions);
+                    //lastDeterminedActionType = Util.selectRandom(actions);
                     //log.info(iterations);
                     // Select the best from the children according to the upper confidence bound
                     var tree = selection(advancedGameState);
 
-                    //log.info("Selected Node: \n" + printTree(tree,"",0));
+                    log.info("Selected Node: \n" + printTree(tree,"",0));
 
                     // Expand the selected node by all actions
                     var expandedTree = expansion(tree);
@@ -373,7 +326,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 log.info("After MCTS: \n" + printTree(advancedGameState,"",0));
 
-                A action = null;
+                MacroActionType action = null;
                 if (advancedGameState.isLeaf()) {
                     log.info("Could not find a move! Doing nothing...");
                 } else {
@@ -381,20 +334,15 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     log._info_();
                     log.info("Iterations: " + iterations);
                     for (var child : advancedGameState.getChildren())
-                        log.info(child.getNode().getResponsibleActionForPlayer(playerId) + " visits:" + child.getNode().getVisits() + " wins:" + child.getNode().getWinsForPlayer(playerId));
+                        log.info(child.getNode().getResponsibleMacroActionForPlayer(playerId) + " visits:" + child.getNode().getVisits() + " wins:" + child.getNode().getWinsForPlayer(playerId));
                     var mostVisitedNode = Collections.max(advancedGameState.getChildren(), treeMoveComparator).getNode();
 
-                    action = mostVisitedNode.getResponsibleActionForPlayer(playerId);
+                    action = mostVisitedNode.getResponsibleMacroActionForPlayer(playerId);
                     log.info("Determined next action: " + action);
 
-                    if (action != null && gameState.isValidAction(action,playerId)) {
-                        sendAction(action, System.currentTimeMillis() + 50);
-                    } else {
-                        log.info("Action was not valid");
-                    }
 
                 }
-                lastDeterminedAction = action;
+                lastDeterminedActionType = action;
 
             } catch (Exception e) {
                 log.info(e);
@@ -404,107 +352,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 break;
             }
         }
+
         log.info("stopped playing");
     }
+
 }
 
 
-class ImperionRealTimeGameNode<A> {
-
-    protected RealTimeGame<A, ?> game;
-
-    protected final Map<Integer, A> actionsTaken;
-
-    private final Map<Integer, Stack<A>> unexploredActions;
-
-    public ImperionRealTimeGameNode(RealTimeGame<A, ?> game, Map<Integer, A> actionsTaken) {
-        this.game = game;
-        if (actionsTaken == null){
-            this.actionsTaken = new HashMap<>();
-        }else{
-            this.actionsTaken = new HashMap<>(actionsTaken);
-        }
-        unexploredActions = getAllPossibleActionsByAllPlayer();
-    }
-
-
-    // This method return all possible actions by each individual player
-    public Map<Integer, Stack<A>> getAllPossibleActionsByAllPlayer() {
-        Map<Integer, Stack<A>> getAllPossibleActionsByPlayer = new HashMap<>();
-        for (int playerId = 0; playerId < game.getNumberOfPlayers(); playerId++) {
-            Set<A> possibleActions = game.getPossibleActions(playerId);
-            Stack<A> actions = new Stack<>();
-
-            // Only shuffle and add to the stack if possibleActions is not null
-            if (possibleActions != null) {
-                List<A> shuffledActions = new ArrayList<>(possibleActions);
-                Collections.shuffle(shuffledActions);
-                actions.addAll(shuffledActions);
-            }
-
-            getAllPossibleActionsByPlayer.put(playerId, actions);
-        }
-        return getAllPossibleActionsByPlayer;
-    }
-
-    public boolean hasUnexploredActions(int playerId) {
-        Stack<A> playerActions = unexploredActions.get(playerId);
-        return (playerActions != null && !playerActions.isEmpty());
-    }
-
-    public A popUnexploredAction(int playerId) {
-        Stack<A> playerActions = unexploredActions.get(playerId);
-        if (playerActions != null && !playerActions.isEmpty())
-            return playerActions.pop();
-        return null;
-    }
-
-    public void setGame(RealTimeGame<A, ?> game) {
-        this.game = game;
-    }
-
-    public A getResponsibleActionForPlayer(int playerId) {
-        return actionsTaken.get(playerId);
-    }
-
-    public RealTimeGame<A, ?> getGame() {
-        return game;
-    }
-}
-
-class GameStateNode<A> extends ImperionRealTimeGameNode<A> {
-
-    private int[] winsForPlayer;
-    private int visits = 0;
-
-    public GameStateNode(RealTimeGame<A, ?> game, Map<Integer, A> actionsTaken) {
-        super(game, actionsTaken);
-        winsForPlayer = new int[game.getNumberOfPlayers()];
-    }
-
-
-    public int incrementWinsForPlayer(int playerId) {
-        return ++winsForPlayer[playerId];
-    }
-
-    public int incrementVisits() {
-        return ++visits;
-    }
-
-    public int getWinsForPlayer(int playerId) {
-        return winsForPlayer[playerId];
-    }
-
-    public int getVisits() {
-        return visits;
-    }
-
-    @Override
-    public String toString() {
-        return "GameStateNode{" +
-                "wins=" + Arrays.toString(winsForPlayer) +
-                ", visits=" + visits +
-                ", actionsTaken=" + actionsTaken +
-                '}';
-    }
-}
