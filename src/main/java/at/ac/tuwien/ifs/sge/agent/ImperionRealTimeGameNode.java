@@ -31,6 +31,9 @@ class ImperionRealTimeGameNode<A> {
 
             actions.addAll(Arrays.asList(MacroActionType.values()));
 
+            //TODO: add only macro actions if certain Empire events exist at the moment
+            // For example: Only add MOVE_UNITS MacroActionType is there is possible actions 'MovementOrder' from the game
+
             getAllPossibleMacroActionsByPlayer.put(playerId,actions);
         }
 

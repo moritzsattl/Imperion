@@ -141,20 +141,25 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 // Pop one action from unexplored actions
                 var actionType = node.popUnexploredAction(playerId);
-
-                try{
-                    executeAction(actionType,playerId,node,true);
-                }catch (ActionException e){
-                    log.info("[ERROR] while advancing the game in expansion" + e);
-                    continue;
+                if(actionType != null){
+                    try{
+                        //log.info("expand");
+                        executeAction(actionType,playerId,node,true);
+                    }catch (ActionException e){
+                        //log.info("[ERROR] ActionException while advancing the game in expansion" + e);
+                        continue;
+                    }catch (NoSuchElementException e){
+                        //log.info("[ERROR] NoSuchElementException while advancing the game in expansion" + e);
+                        continue;
+                    }
+                    //log.info("executeAction was successful");
+                    // If actions were successfully executed, by each player
+                    actionsTaken.put(playerId,actionType);
+                    expandedTree = new DoubleLinkedTree<>(new GameStateNode<A>(nextGameState,actionsTaken));
                 }
-
-                // If actions were successfully executed, by each player
-                actionsTaken.put(playerId,actionType);
-                expandedTree = new DoubleLinkedTree<>(new GameStateNode<A>(nextGameState,actionsTaken));
             }
             tree.add(expandedTree);
-
+            actionsTaken = new HashMap<>();
         }
 
         if(expandedTree == null){
@@ -177,7 +182,13 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     var possibleActions = node.getAllPossibleMacroActionsByAllPlayer();
                     if (possibleActions.size() > 0) {
                         var nextAction = Util.selectRandom(possibleActions.get(playerId));
-                        executeAction(nextAction,playerId,node,true);
+                        //log.info("simulation");
+                        try{
+                            executeAction(nextAction,playerId,node,true);
+                        }catch (NoSuchElementException e){
+                            //log.info("[ERROR] in simulating the game: " + e);
+                        }
+
                     }
                 }
 
@@ -240,37 +251,49 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
     }
 
 
-    private void executeAction(MacroActionType actionType,int playerId, GameStateNode<A> advancedGameState, boolean simulate) throws ActionException {
+    private void executeAction(MacroActionType actionType,int playerId, GameStateNode<A> advancedGameState, boolean simulate) throws ActionException, NoSuchElementException {
+
         MacroAction<A> macroAction = new MacroActionFactory().createMacroAction(actionType, advancedGameState, playerId, log);
 
         if(macroAction instanceof MoveMacroAction<A>){
             MoveAction<A> moveAction = ((MoveMacroAction<A>) macroAction).generateExecutableAction();
 
-            List<Position> path = moveAction.getResponsibleActions();
-
-            A lastDeterminedAction = null;
-            for (var position : path) {
-                var gameState = game.copy();
-
-                // Scheduling event
-                if (lastDeterminedAction != null && game.isValidAction(lastDeterminedAction, playerId)) {
-                    game.scheduleActionEvent(new GameActionEvent<>(playerId, lastDeterminedAction, gameState.getGameClock().getGameTimeMs() + 1));
+                if(!simulate){
+                    log.info(moveAction);
                 }
 
-                // Advancing the game
-                gameState.advance(DEFAULT_DECISION_PACE_MS + 50);
 
-
-                A action = (A) new MovementStartOrder(moveAction.getUnit(),position);
+                List<Position> path = moveAction.getResponsibleActions();
 
                 if(!simulate){
-                    // Send action to server
-                    sendAction((A) action,System.currentTimeMillis() + 50);
+                    log.info(path);
                 }
 
 
-                lastDeterminedAction = action;
-            }
+                A lastDeterminedAction = null;
+                for (var position : path) {
+                    var gameState = game.copy();
+
+                    // Scheduling event
+                    if (lastDeterminedAction != null && game.isValidAction(lastDeterminedAction, playerId)) {
+                        game.scheduleActionEvent(new GameActionEvent<>(playerId, lastDeterminedAction, gameState.getGameClock().getGameTimeMs() + 1));
+                    }
+
+                    // Advancing the game
+                    gameState.advance(DEFAULT_DECISION_PACE_MS + 50);
+
+                    //TODO: If advancing failed, because of mountains in the way for example, calc new path to early destinations pos
+
+                    A action = (A) new MovementStartOrder(moveAction.getUnit(), position);
+
+                    if (!simulate) {
+                        // Send action to server
+                        sendAction((A) action, System.currentTimeMillis() + 50);
+                    }
+
+
+                    lastDeterminedAction = action;
+                }
         }
 
     }
@@ -288,7 +311,14 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 var advancedGameState = new DoubleLinkedTree<>(new GameStateNode<>(gameState, null));
 
                 if(lastDeterminedActionType != null){
-                    executeAction(lastDeterminedActionType,playerId,advancedGameState.getNode(),false);
+                    //log.info("execute");
+                    try{
+                        executeAction(lastDeterminedActionType,playerId,advancedGameState.getNode(),false);
+                    }catch (NoSuchElementException e){
+                        //log.info("[ERROR] while excuting action");
+                    }
+
+
                 }
                 // Tell the garbage collector to try recycling/reclaiming unused objects
                 System.gc();
@@ -306,7 +336,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     // Select the best from the children according to the upper confidence bound
                     var tree = selection(advancedGameState);
 
-                    log.info("Selected Node: \n" + printTree(tree,"",0));
+                    //log.info("Selected Node: \n" + printTree(tree,"",0));
 
                     // Expand the selected node by all actions
                     var expandedTree = expansion(tree);
@@ -324,7 +354,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 }
 
 
-                log.info("After MCTS: \n" + printTree(advancedGameState,"",0));
+                //log.info("After MCTS: \n" + printTree(advancedGameState,"",0));
 
                 MacroActionType action = null;
                 if (advancedGameState.isLeaf()) {
@@ -339,8 +369,6 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                     action = mostVisitedNode.getResponsibleMacroActionForPlayer(playerId);
                     log.info("Determined next action: " + action);
-
-
                 }
                 lastDeterminedActionType = action;
 

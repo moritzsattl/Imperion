@@ -46,7 +46,7 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
         if(path == null){
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
             AStarNode currentNode = aStar.findPath();
-            log.info("Found path " + currentNode);
+            //log.info("Found path " + currentNode);
 
             if(currentNode == null) return null;
 
