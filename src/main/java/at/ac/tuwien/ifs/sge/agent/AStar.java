@@ -41,18 +41,16 @@ public class AStar {
     }
 
     public AStarNode findPath() {
-        log.info("Searching path to " + endNode);
         while (!openList.isEmpty()) {
             AStarNode currentNode = openList.poll();
             closedList[currentNode.getX()][currentNode.getY()] = true;
 
-            log.info(currentNode);
-            log.info(Arrays.deepToString(closedList));
+            //log.info(currentNode);
+            //log.info(Arrays.deepToString(closedList));
 
             if (isEndNode(currentNode)) {
                 return currentNode;
             } else {
-                log.info("add neighbours of " + currentNode);
                 addAdjacentNodes(currentNode);
             }
         }
@@ -71,8 +69,8 @@ public class AStar {
                 try{
                     var tile = map.getTile(nextX,nextY);
                     // Ignore when tiles are not visited, but don't ignore if tiles are occupied or mountains
-                    if (!closedList[nextX][nextY] && (tile == null || map.isMovementPossible(nextX,nextY,playerId))) { // add check for possible movement
-                        AStarNode adjacentNode = new AStarNode(map.getEmpireTiles()[nextX][nextY].getPosition());
+                    if (!closedList[nextX][nextY] && (tile == null || (tile.getOccupants() != null &&  map.isMovementPossible(nextX,nextY,playerId)))) { // add check for possible movement
+                        AStarNode adjacentNode = new AStarNode(new Position(nextX,nextY));
                         int gCost = gCosts[currentNode.getX()][currentNode.getY()] + 1;
                         int hCost = getEstimatedDistance(adjacentNode, endNode);
 
@@ -96,9 +94,9 @@ public class AStar {
                         }
                     }
                 }catch (EmpireMapException e){
-                    continue;
+
                 }catch (Exception e){
-                    log.info(e);
+
                 }
             }
 

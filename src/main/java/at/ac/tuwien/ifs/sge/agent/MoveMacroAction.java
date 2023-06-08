@@ -23,10 +23,10 @@ public class MoveMacroAction<A> extends AbstractMacroAction<A>{
         this.destinations = null;
     }
 
-    public MoveAction<A> generateExecutableAction(){
+    public MoveAction<A> generateExecutableAction() throws NoSuchElementException{
         if (units.isEmpty()) {
             // No move action possible if no units are available.
-            return null;
+            throw new NoSuchElementException();
         }
 
         Random random = new Random();
@@ -35,7 +35,7 @@ public class MoveMacroAction<A> extends AbstractMacroAction<A>{
         int unitIndex = random.nextInt(units.size());
         EmpireUnit selectedUnit = units.get(unitIndex);
 
-        log.info("Selected Unit: \n"+ selectedUnit);
+        //log.info("Selected Unit: \n"+ selectedUnit);
 
 
         // Get valid and visible locations the unit can move to using the FloodFill Algorithm
@@ -82,11 +82,11 @@ public class MoveMacroAction<A> extends AbstractMacroAction<A>{
             }
         }
 
-        log.info("Valid Locations to go: \n"+ validLocations);
+        //log.info("Valid Locations to go: \n"+ validLocations);
 
         if (validLocations.isEmpty()) {
             // No move action possible if no valid locations are available.
-            return null;
+            throw new NoSuchElementException();
         }
 
         // Select a random location.
