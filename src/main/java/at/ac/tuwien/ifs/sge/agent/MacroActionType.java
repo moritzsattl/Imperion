@@ -1,7 +1,7 @@
 package at.ac.tuwien.ifs.sge.agent;
 
 public enum MacroActionType {
-    MOVE_UNITS("MOVE UNITS");
+    EXPLORATION("EXPLORATION");
 
 
     private final String displayName;

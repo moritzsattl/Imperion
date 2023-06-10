@@ -1,43 +1,29 @@
 package at.ac.tuwien.ifs.sge.agent;
 
-import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
-import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
+import at.ac.tuwien.ifs.sge.core.game.Game;
+import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
-import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.*;
 
-public class MoveMacroAction<A> extends AbstractMacroAction<A>{
+public class PhantomEmpireMap<G> {
 
+    private List<Position> knownPositions;
 
-    private final int playerId;
-    private final List<EmpireUnit> units;
-    private final List<Position> destinations;
+    private Empire game;
 
-    public MoveMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log) {
-        super(gameStateNode, playerId ,log);
-        this.playerId = playerId;
-        this.units = game.getUnitsByPlayer(playerId);
-        this.destinations = null;
+    public PhantomEmpireMap(List<Position> knownPositions, Game<G, ?> game) {
+        this.knownPositions = knownPositions;
+        this.game = (Empire) game;
     }
 
-    public MoveAction<A> generateExecutableAction() throws NoSuchElementException{
-        if (units.isEmpty()) {
-            // No move action possible if no units are available.
-            throw new NoSuchElementException();
-        }
+    public PhantomEmpireMap(Position start) {
+        knownPositions = getKnownPositions(start);
+    }
 
-        Random random = new Random();
-
-        // Select a random unit.
-        int unitIndex = random.nextInt(units.size());
-        EmpireUnit selectedUnit = units.get(unitIndex);
-
-        //log.info("Selected Unit: \n"+ selectedUnit);
-
-
+    public List<Position> getKnownPositions(Position start){
         // Get valid and visible locations the unit can move to using the FloodFill Algorithm
         List<Position> validLocations = new ArrayList<>();
 
@@ -50,7 +36,7 @@ public class MoveMacroAction<A> extends AbstractMacroAction<A>{
         Set<Position> checkedPositions = new HashSet<>();
 
         // Add starting position to the queue
-        positionsToCheck.add(selectedUnit.getPosition());
+        positionsToCheck.add(start);
 
         while (!positionsToCheck.isEmpty()) {
             Position current = positionsToCheck.poll();
@@ -82,47 +68,11 @@ public class MoveMacroAction<A> extends AbstractMacroAction<A>{
             }
         }
 
-        //log.info("Valid Locations to go: \n"+ validLocations);
-
         if (validLocations.isEmpty()) {
             // No move action possible if no valid locations are available.
             throw new NoSuchElementException();
         }
 
-        // Select a random location.
-        int locationIndex = random.nextInt(validLocations.size());
-        Position destination = validLocations.get(locationIndex);
-
-        // Return the move action.
-        return new MoveAction<A>(gameStateNode, selectedUnit, destination,playerId, log);
-    }
-
-
-    @Override
-    public List<Position> getResponsibleActions(){
-        MoveAction<A> executable = generateExecutableAction();
-        if (executable != null) {
-            return executable.getResponsibleActions();
-        }
-
-        return null;
-    }
-
-    @Override
-    public void simulate() throws ActionException {
-        MoveAction<A> executable = generateExecutableAction();
-        if (executable != null) {
-            executable.simulate();
-        }
-    }
-
-    @Override
-    public String toString() {
-        return "MoveMacroAction{" +
-                "playerId=" + playerId +
-                ", units=" + units +
-                ", destinations=" + destinations +
-                '}';
+        return validLocations;
     }
 }
-

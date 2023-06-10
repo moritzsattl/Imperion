@@ -15,6 +15,7 @@ import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Stack;
 
@@ -22,6 +23,7 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
 
     private final EmpireUnit unit;
     private final Position destination;
+
 
     private List<Position> path;
 
@@ -33,8 +35,8 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
         return destination;
     }
 
-    public MoveAction(GameStateNode<A> gameStateNode, EmpireUnit unit, Position destination, int playerId, Logger log) {
-        super(gameStateNode, playerId, log);
+    public MoveAction(GameStateNode<A> gameStateNode, EmpireUnit unit, Position destination, int playerId, Logger log, boolean simulation) {
+        super(gameStateNode, playerId, log, simulation);
         this.unit = unit;
         this.destination = destination;
         this.log = log;
@@ -45,8 +47,11 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
     public List<Position> getResponsibleActions() {
         if(path == null){
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
-            AStarNode currentNode = aStar.findPath();
-            //log.info("Found path " + currentNode);
+            AStarNode currentNode = aStar.findPath(simulation);
+            if(!simulation){
+                log.info("Found path " + currentNode);
+            }
+
 
             if(currentNode == null) return null;
 
@@ -57,9 +62,11 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
                 path.add(currentNode.getPosition());
 
                 // Next Position to move to
-                currentNode = currentNode.getNext();
+                currentNode = currentNode.getPrev();
             }
         }
+
+        Collections.reverse(path);
         return path;
 
     }

@@ -11,40 +11,50 @@ import java.util.*;
 public class AStar {
 
     private AStarNode endNode;
-    private PriorityQueue<AStarNode> openList;
+    private TreeSet<AStarNode> openList;
+    private HashSet<AStarNode> openSet;
     private boolean[][] closedList;
     private int[][] gCosts;
+    private int[][] hCosts;
 
     private EmpireMap map;
-
     private int playerId;
-
     private Logger log;
 
-
-
-    public <A> AStar(Position startPos, Position endPos, GameStateNode<A> gameStateNode,int playerId, Logger log) {
+    public <A> AStar(Position startPos, Position endPos, GameStateNode<A> gameStateNode, int playerId, Logger log) {
         map = ((Empire) gameStateNode.getGame()).getBoard();
-        openList = new PriorityQueue<>(Comparator.comparingInt(AStarNode::getfCost));
+        Comparator<AStarNode> comparator = Comparator.comparingInt(AStarNode::getfCost);
+        openList = new TreeSet<>(comparator);
+        openSet = new HashSet<>();
+
         gCosts = new int[map.getEmpireTiles().length][map.getEmpireTiles()[0].length];
+        hCosts = new int[map.getEmpireTiles().length][map.getEmpireTiles()[0].length];
         closedList = new boolean[map.getEmpireTiles().length][map.getEmpireTiles()[0].length];
 
         AStarNode start = new AStarNode(startPos);
         endNode = new AStarNode(endPos);
 
         openList.add(start);
+        openSet.add(start);
         gCosts[start.getX()][start.getY()] = 0;
-        start.sethCosts(getEstimatedDistance(start, endNode));
+        hCosts[start.getX()][start.getY()] = getEstimatedDistance(start, endNode);
+        start.sethCosts(hCosts[start.getX()][start.getY()]);
 
         this.playerId = playerId;
         this.log = log;
     }
 
-    public AStarNode findPath() {
+    public AStarNode findPath(boolean simulation) {
         while (!openList.isEmpty()) {
-            AStarNode currentNode = openList.poll();
+            AStarNode currentNode = openList.pollFirst();
+            if (currentNode == null) return null;
+
             closedList[currentNode.getX()][currentNode.getY()] = true;
 
+
+            if(!simulation){
+                log.info(currentNode);
+            }
             //log.info(currentNode);
             //log.info(Arrays.deepToString(closedList));
 
@@ -69,27 +79,28 @@ public class AStar {
                 try{
                     var tile = map.getTile(nextX,nextY);
                     // Ignore when tiles are not visited, but don't ignore if tiles are occupied or mountains
-                    if (!closedList[nextX][nextY] && (tile == null || (tile.getOccupants() != null &&  map.isMovementPossible(nextX,nextY,playerId)))) { // add check for possible movement
+                    if (!closedList[nextX][nextY] && (tile == null || (tile.getOccupants() != null &&  map.isMovementPossible(nextX,nextY,playerId)))) {
                         AStarNode adjacentNode = new AStarNode(new Position(nextX,nextY));
                         int gCost = gCosts[currentNode.getX()][currentNode.getY()] + 1;
-                        int hCost = getEstimatedDistance(adjacentNode, endNode);
+                        hCosts[nextX][nextY] = getEstimatedDistance(adjacentNode, endNode);
 
-                        if (!openList.contains(adjacentNode)) {
+                        if (!openSet.contains(adjacentNode)) {
                             adjacentNode.setPreviousNode(currentNode);
-                            adjacentNode.sethCosts(hCost);
+                            adjacentNode.sethCosts(hCosts[nextX][nextY]);
                             gCosts[nextX][nextY] = gCost;
-                            adjacentNode.setfCosts(gCost + hCost);
+                            adjacentNode.setfCosts(gCost + hCosts[nextX][nextY]);
                             openList.add(adjacentNode);
-                        } else { // update gCosts if this path is better than the previous one
-                            for (AStarNode node : openList) {
-                                if (node.equals(adjacentNode) && gCost < gCosts[node.getX()][node.getY()]) {
-                                    openList.remove(node);  // Remove the old node from the openList
-                                    node.setPreviousNode(currentNode);
-                                    gCosts[node.getX()][node.getY()] = gCost;
-                                    node.setfCosts(gCost + hCost);
-                                    openList.add(node);  // Add the updated node to the openList
-                                    break;
-                                }
+                            openSet.add(adjacentNode);
+                        } else {
+                            AStarNode existingNode = openList.stream().filter(n -> n.equals(adjacentNode)).findFirst().orElse(null);
+                            if (existingNode != null && gCost < gCosts[existingNode.getX()][existingNode.getY()]) {
+                                openList.remove(existingNode);
+                                openSet.remove(existingNode);
+                                existingNode.setPreviousNode(currentNode);
+                                gCosts[existingNode.getX()][existingNode.getY()] = gCost;
+                                existingNode.setfCosts(gCost + hCosts[nextX][nextY]);
+                                openList.add(existingNode);
+                                openSet.add(existingNode);
                             }
                         }
                     }
