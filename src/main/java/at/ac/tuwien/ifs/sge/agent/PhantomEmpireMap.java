@@ -14,9 +14,12 @@ public class PhantomEmpireMap<G> {
 
     private Empire game;
 
-    public PhantomEmpireMap(List<Position> knownPositions, Game<G, ?> game) {
+    private int playerId;
+
+    public PhantomEmpireMap(List<Position> knownPositions, Game<G, ?> game, int playerId) {
         this.knownPositions = knownPositions;
         this.game = (Empire) game;
+        this.playerId = playerId;
     }
 
     public PhantomEmpireMap(Position start) {
