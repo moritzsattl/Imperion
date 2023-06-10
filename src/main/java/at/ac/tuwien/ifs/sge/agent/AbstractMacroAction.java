@@ -1,11 +1,7 @@
 package at.ac.tuwien.ifs.sge.agent;
 
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
-import at.ac.tuwien.ifs.sge.core.game.Game;
-import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
-import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
-import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 
 public abstract class AbstractMacroAction<A> implements MacroAction<A>{
 
@@ -17,11 +13,14 @@ public abstract class AbstractMacroAction<A> implements MacroAction<A>{
 
     protected Logger log;
 
-    public AbstractMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log) {
+    protected final boolean simulation;
+
+    public AbstractMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation) {
         this.gameStateNode = gameStateNode;
         this.game = (Empire) gameStateNode.getGame();
         this.playerId = playerId;
         this.log = log;
+        this.simulation = simulation;
     }
 
 }

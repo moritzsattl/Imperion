@@ -10,7 +10,7 @@ class AStarNode implements Comparable<AStarNode> {
 
     private int tfCost,thCost = 0;
 
-    private AStarNode next, prev;
+    private AStarNode prev;
 
     public AStarNode(Position position) {
         this.position = position;
@@ -48,15 +48,14 @@ class AStarNode implements Comparable<AStarNode> {
         return position;
     }
 
-    public AStarNode getNext() {
-        return next;
+    public AStarNode getPrev() {
+        return prev;
     }
 
     @Override
     public String toString() {
         return "AStarNode{" +
                 "position=" + position +
-                ", next=" + next +
                 '}';
     }
 

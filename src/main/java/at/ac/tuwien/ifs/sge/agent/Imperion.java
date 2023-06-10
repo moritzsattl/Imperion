@@ -7,10 +7,8 @@ import at.ac.tuwien.ifs.sge.core.game.Game;
 import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.core.util.Util;
-import at.ac.tuwien.ifs.sge.core.util.node.RealTimeGameNode;
 import at.ac.tuwien.ifs.sge.core.util.tree.DoubleLinkedTree;
 import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
@@ -253,13 +251,16 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
     private void executeAction(MacroActionType actionType,int playerId, GameStateNode<A> advancedGameState, boolean simulate) throws ActionException, NoSuchElementException {
 
-        MacroAction<A> macroAction = new MacroActionFactory().createMacroAction(actionType, advancedGameState, playerId, log);
+        MacroAction<A> macroAction = new MacroActionFactory().createMacroAction(actionType, advancedGameState, playerId, log, simulate);
 
-        if(macroAction instanceof MoveMacroAction<A>){
-            MoveAction<A> moveAction = ((MoveMacroAction<A>) macroAction).generateExecutableAction();
+        if(macroAction instanceof ExplorationMacroAction<A>){
+            MoveAction<A> moveAction = ((ExplorationMacroAction<A>) macroAction).generateExecutableAction();
 
                 if(!simulate){
                     log.info(moveAction);
+                }
+                if(!simulate){
+                    log.info(moveAction.getUnit().getPosition());
                 }
 
 
