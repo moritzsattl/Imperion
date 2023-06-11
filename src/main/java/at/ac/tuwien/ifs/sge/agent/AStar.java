@@ -52,12 +52,6 @@ public class AStar {
             closedList[currentNode.getX()][currentNode.getY()] = true;
 
 
-            if(!simulation){
-                log.info(currentNode);
-            }
-            //log.info(currentNode);
-            //log.info(Arrays.deepToString(closedList));
-
             if (isEndNode(currentNode)) {
                 return currentNode;
             } else {
@@ -79,7 +73,7 @@ public class AStar {
                 try{
                     var tile = map.getTile(nextX,nextY);
                     // Ignore when tiles are not visited, but don't ignore if tiles are occupied or mountains
-                    if (!closedList[nextX][nextY] && (tile == null || (tile.getOccupants() != null &&  map.isMovementPossible(nextX,nextY,playerId)))) {
+                    if (!closedList[nextX][nextY] && (tile == null || (tile.getOccupants() != null && map.isMovementPossible(nextX,nextY,playerId)))) {
                         AStarNode adjacentNode = new AStarNode(new Position(nextX,nextY));
                         int gCost = gCosts[currentNode.getX()][currentNode.getY()] + 1;
                         hCosts[nextX][nextY] = getEstimatedDistance(adjacentNode, endNode);

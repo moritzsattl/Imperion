@@ -10,7 +10,7 @@ public class MacroActionFactory<A> {
 
     public MacroAction<A> createMacroAction(MacroActionType type, GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulate) {
         switch (type) {
-            case MOVE_UNITS:
+            case EXPLORATION:
                 return new ExplorationMacroAction<A>(gameStateNode, playerId,log, simulate);
             // Add other cases here for other types of MacroActions
             default:
