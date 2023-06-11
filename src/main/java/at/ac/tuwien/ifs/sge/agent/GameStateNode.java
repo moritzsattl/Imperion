@@ -3,7 +3,6 @@ import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Stack;
 
 class GameStateNode<A> extends ImperionRealTimeGameNode<A> {
 

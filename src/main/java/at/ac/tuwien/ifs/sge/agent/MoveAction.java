@@ -3,6 +3,7 @@ package at.ac.tuwien.ifs.sge.agent;
 import at.ac.tuwien.ifs.sge.core.agent.AbstractRealTimeGameAgent;
 import at.ac.tuwien.ifs.sge.core.agent.Agent;
 import at.ac.tuwien.ifs.sge.core.agent.GameAgent;
+import at.ac.tuwien.ifs.sge.core.engine.communication.events.GameActionEvent;
 import at.ac.tuwien.ifs.sge.core.engine.communication.events.SgeEvent;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
@@ -14,10 +15,7 @@ import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 public class MoveAction<A> extends AbstractMacroAction<A>{
 
@@ -25,7 +23,7 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
     private final Position destination;
 
 
-    private List<Position> path;
+    private Deque<EmpireEvent> path;
 
     public EmpireUnit getUnit() {
         return unit;
@@ -44,29 +42,24 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
 
 
     @Override
-    public List<Position> getResponsibleActions() {
+    public Deque<EmpireEvent> getResponsibleActions() {
         if(path == null){
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
             AStarNode currentNode = aStar.findPath(simulation);
-            if(!simulation){
-                log.info("Found path " + currentNode);
-            }
-
 
             if(currentNode == null) return null;
 
 
-            path = new ArrayList<>();
+            path = new ArrayDeque<>();
 
             while (currentNode != null) {
-                path.add(currentNode.getPosition());
+                path.addFirst(new MovementStartOrder(unit.getId(),currentNode.getPosition()));
 
                 // Next Position to move to
                 currentNode = currentNode.getPrev();
             }
         }
-
-        Collections.reverse(path);
+        path.poll();
         return path;
 
     }
