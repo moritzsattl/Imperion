@@ -1,17 +1,9 @@
 package at.ac.tuwien.ifs.sge.agent;
 
-import at.ac.tuwien.ifs.sge.core.agent.AbstractRealTimeGameAgent;
-import at.ac.tuwien.ifs.sge.core.agent.Agent;
-import at.ac.tuwien.ifs.sge.core.agent.GameAgent;
-import at.ac.tuwien.ifs.sge.core.engine.communication.events.GameActionEvent;
-import at.ac.tuwien.ifs.sge.core.engine.communication.events.SgeEvent;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
-import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.action.MovementAction;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
-import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
@@ -40,6 +32,11 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
         this.log = log;
     }
 
+
+    @Override
+    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit, Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+        return null;
+    }
 
     @Override
     public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) {

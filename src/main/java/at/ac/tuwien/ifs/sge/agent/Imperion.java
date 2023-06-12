@@ -24,7 +24,6 @@ import java.util.concurrent.Future;
 public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeGameAgent<G, A> {
     private Future<?> thread;
 
-    @SuppressWarnings("unchecked")
     public static void main(String[] args) {
         var playerId = getPlayerIdFromArgs(args);
         var playerName = getPlayerNameFromArgs(args);
@@ -182,7 +181,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     }catch (ActionException e){
                         //log.info("[ERROR] ActionException while advancing the game in expansion" + e);
                         continue;
-                    }catch (NoSuchElementException e){
+                    } catch (NoSuchElementException e){
                         //log.info("[ERROR] NoSuchElementException while advancing the game in expansion" + e);
                         continue;
                     }
@@ -266,6 +265,19 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         return winners;
     }
 
+    private double[] utilityValue(Empire game) {
+        EmpireMap cityControl =  game.getBoard();
+        var unitAdvantage = multiplyArrayElements(game.getGameHeuristicValue(), 0.25);
+        return null;
+    }
+
+    private static double[] multiplyArrayElements(double[] array, double multiplier) {
+        for (int i = 0; i < array.length; i++) {
+            array[i] *= multiplier;
+        }
+        return array;
+    }
+
     private void backPropagation(Tree<GameStateNode<A>> tree, boolean[] winners) {
         // Go back up in the tree and increment the visits of evey node as well as the wins of the players nodes
         do {
@@ -305,9 +317,9 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             Deque<MacroAction<A>> actions = null;
             try{
                 if(simulate){
-                    actions = ((ExplorationMacroAction<A>) macroAction).generateExecutableAction(simulatedUnitCommandQueues);
+                    actions = macroAction.generateExecutableAction(simulatedUnitCommandQueues);
                 }else{
-                    actions = ((ExplorationMacroAction<A>) macroAction).generateExecutableAction(unitCommandQueues);
+                    actions = macroAction.generateExecutableAction(unitCommandQueues);
                 }
             }catch (ExecutableActionFactoryException e){
 
