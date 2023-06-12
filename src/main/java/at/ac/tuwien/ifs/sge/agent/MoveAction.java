@@ -47,8 +47,8 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
             AStarNode currentNode = aStar.findPath(simulation);
 
-            if(currentNode == null) return null;
 
+            if(currentNode == null) return null;
 
             path = new ArrayDeque<>();
 

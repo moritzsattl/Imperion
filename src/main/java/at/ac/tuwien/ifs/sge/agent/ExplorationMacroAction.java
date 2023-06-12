@@ -27,28 +27,35 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
     public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<A>> actions = new LinkedList<>();
 
-        if (units.isEmpty()) {
-            // No move action possible if no units are available.
-            throw new ExecutableActionFactoryException();
-        }
-
         // Get units which are not busy
         ArrayList<EmpireUnit> notBusyUnits = new ArrayList<>();
 
         for (var unit: units) {
-            if(!unitCommandQueues.containsKey(unit) || unitCommandQueues.get(unit).isEmpty()){
+            if(unitCommandQueues.get(unit) == null || unitCommandQueues.get(unit).isEmpty()){
                 notBusyUnits.add(unit);
             }
         }
 
+        log.info("Units which are not busy: " + notBusyUnits);
+
+        if (units.isEmpty()) {
+            // No move action possible if no units are available.
+            throw new ExecutableActionFactoryException("No units are available");
+        }
+
         // Select scout unit
         EmpireUnit selectedUnit = null;
+
+        List<EmpireUnit> scouts = new ArrayList<>();
         for (var unit : notBusyUnits) {
             // Select Scout
-            if (unit.getUnitTypeName().equals("2")) {
-                log.info("Select scout");
-                selectedUnit = unit;
+            if (unit.getUnitTypeName().equals("Scout")) {
+                scouts.add(unit);
             }
+        }
+
+        if(!scouts.isEmpty()){
+            selectedUnit = Util.selectRandom(scouts);
         }
 
         BuildAction<A> buildAction = null;
@@ -60,7 +67,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
                 // If we have a unit (not a scout) on a city, make production order for scout (if not already producing)
                 if(game.getCitiesByPosition().containsKey(unit.getPosition())){
                     if(game.getCity(unit.getPosition()).getState() == EmpireProductionState.Idle && !unit.getUnitTypeName().equals("2")){
-                        buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,unit, 2);
+                        buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unit.getPosition()),unit, 2);
                         actions.add(buildAction);
                     }
                 }
@@ -68,19 +75,10 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
             // Select other unit for scouting instead of scout for MoveAction
             for (var unit : notBusyUnits) {
-
                 // If unit not on city, select it
                 if(!game.getCitiesByPosition().containsKey(unit.getPosition())){
                     selectedUnit = unit;
                     break;
-                }
-
-                // If unit on city, only select it if there are more than on units on city
-                if(game.getCitiesByPosition().containsKey(unit.getPosition())){
-                    if(game.getCity(unit.getPosition()).getOccupants().size() > 1){
-                        selectedUnit = unit;
-                        break;
-                    }
                 }
             }
         }
@@ -88,7 +86,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         // If no units are free and all cities are producing throw exception
         if(selectedUnit == null){
             if(actions.isEmpty()){
-                throw new ExecutableActionFactoryException();
+                throw new ExecutableActionFactoryException("No units available and cities are all producing");
             }
             // If there are no units, which are free (not last unit on a city tile) just order buildAction
             return actions;
