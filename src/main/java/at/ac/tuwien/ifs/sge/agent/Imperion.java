@@ -4,6 +4,7 @@ import at.ac.tuwien.ifs.sge.core.agent.AbstractRealTimeGameAgent;
 import at.ac.tuwien.ifs.sge.core.engine.communication.ActionResult;
 import at.ac.tuwien.ifs.sge.core.engine.communication.events.GameActionEvent;
 import at.ac.tuwien.ifs.sge.core.game.Game;
+import at.ac.tuwien.ifs.sge.core.game.GameUpdate;
 import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.core.util.Util;
@@ -12,6 +13,7 @@ import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
+import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireInternalException;
 import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
@@ -159,8 +161,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         Tree<GameStateNode<A>> expandedTree = null;
 
         // Determinized Game
-        var determinizedGame = determinize((Empire) game.copy());
+        var determinizedGame = determinize((Empire) gameState.getGame());
         gameState.setGame((RealTimeGame<A, ?>) determinizedGame);
+
+        log.info(((DeterminizedEmpireGame) gameState.getGame()).getDeterminizedMap());
 
         int EXPAND_NODES_COUNT = 1;
 
@@ -178,7 +182,6 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 if(actionType != null){
                     try{
-                        //log.info("expand");
                         executeMacroAction(actionType,playerId,gameState,true);
                     }catch (ActionException e){
                         //log.info("[ERROR] ActionException while advancing the game in expansion" + e);
@@ -213,13 +216,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         var gameState = tree.getNode();
 
         var depth = 0;
-        DeterminizedEmpireGame determinizedGame = null;
         try {
             while (!gameState.getGame().isGameOver() && depth++ <= DEFAULT_SIMULATION_DEPTH && System.currentTimeMillis() < nextDecisionTime) {
-
-                // Determinized Game
-                determinizedGame = determinize((Empire) gameState.getGame().copy());
-                gameState.setGame((RealTimeGame<A, ?>) determinizedGame);
 
                 // Apply random action for each player and advance game
                 for (var playerId = 0; playerId < game.getNumberOfPlayers(); playerId++) {
@@ -240,6 +238,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         } catch (Exception e) {
             log.printStackTrace(e);
         }
+
+        //log.info(gameState.getGame().getBoard());
 
         return determineWinner(game);
     }
@@ -316,7 +316,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 addToCommandQueue(simulatedUnitCommandQueues,moveAction);
                 Queue<A> simulatedActions = simulateNextCommands(determinizedGame,playerId);
                 // Repeat until all actions were simulated
-                log.info("Simulated actions in this simulation");
+                //log.info("Simulated actions in this simulation");
                 while(simulatedActions.size() > 0){
                     //for (var actions:
                     //     simulatedActions) {
@@ -386,22 +386,21 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 if(action != null){
 
-                    //TODO: Add vision to tiles which were discovered in simulation
                     MovementStartOrder order = ((MovementStartOrder)action);
                     Position pos = order.getDestination();
-                    log.info(game.getBoard().getEmpireTiles()[pos.getY()][pos.getY()]);
+                    //log.info(game.getBoard().getEmpireTiles()[pos.getY()][pos.getY()]);
 
-                    try {
-                        game.getBoard().addVision(pos,playerId,order.getUnitId());
-                        log.info(game.getBoard().getEmpireTiles()[pos.getY()][pos.getY()]);
-                    } catch (EmpireMapException e) {
-                        log.info("Adding vision was not possible");
-                        log.info(e);
+                    // If tiles is unknown, continue
+                    if(game.getBoard().getEmpireTiles()[pos.getY()][pos.getY()] == null){
+                        continue;
                     }
 
-                    // Scheduling event
+                    // Apply event
+                    List<GameUpdate<EmpireEvent>> updates = new ArrayList<>();
+
                     if (game.isValidAction(action,playerId)) {
-                        game.scheduleActionEvent(new GameActionEvent<EmpireEvent>(playerId, action, game.getGameClock().getGameTimeMs() + 1));
+                        GameActionEvent<EmpireEvent> actionEvent = new GameActionEvent<EmpireEvent>(playerId, action, game.getGameClock().getGameTimeMs() + 1);
+                        updates = game.applyActionEvent(actionEvent);
                     }
 
                     // Advancing the game
@@ -412,6 +411,9 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                         // If advancing failed, because of mountains in the way for example, calc new path to destination position
                         onActionRejection(simulatedUnitCommandQueues,action);
                     }
+
+
+                    //log.info(game.getBoard());
 
                     simulatedCommands.add((A) action);
                 }
@@ -477,11 +479,14 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 }
 
                 // Advance the game state in time by the decision pace since this is the point in time that the next best action will be sent
-                gameState.advance(DEFAULT_DECISION_PACE_MS + 51);
+                gameState.advance(DEFAULT_DECISION_PACE_MS + 100);
+
 
                 // Create a new tree with the game state as root
                 var advancedGameState = new DoubleLinkedTree<>(new GameStateNode<>(gameState, null));
 
+
+                //log.info(gameState.getBoard());
 
                 var iterations = 0;
                 var now = System.currentTimeMillis();
@@ -511,6 +516,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                     iterations++;
                 }
+
 
 
                 //log.info("After MCTS: \n" + printTree(advancedGameState,"",0));

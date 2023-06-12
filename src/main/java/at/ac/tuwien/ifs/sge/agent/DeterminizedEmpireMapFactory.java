@@ -63,7 +63,7 @@ public class DeterminizedEmpireMapFactory {
         for (int y = 0; y < map.length; y++) {
             for (int x = 0; x < map[y].length; x++) {
                 Position pos = new Position(x,y);
-                if (!configuration.getStartingCities().contains(pos) && !knownPositions.contains(pos)) {
+                if (!configuration.getStartingCities().contains(pos) /*&& !knownPositions.contains(pos)*/) {
                     unknownPositions.add(pos);
                 }
             }
