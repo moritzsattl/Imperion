@@ -4,6 +4,7 @@ import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.core.util.Util;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
+import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
@@ -105,22 +106,32 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
             }
         }
 
+
+
+        double FAR_EXPLORATION_CONSTANT = 0.6;
+        Random rand = new Random();
+
         double maxDistance = -1;
         Position destination = null;
-
         if(!unknownPositions.isEmpty()){
-            // If there are unknown tiles, select the farthest one from all known tiles.
-            while (!unknownPositions.isEmpty()){
-                var unknownPosition = unknownPositions.pop();
-                for (var knownPosition: knownPositions) {
-                    double dist = getEuclideanDistance(knownPosition, unknownPosition);
-                    if (dist > maxDistance) {
-                        maxDistance = dist;
-                        destination = unknownPosition;
-                    }
-                }
 
+            if(rand.nextDouble() > FAR_EXPLORATION_CONSTANT){
+                // If there are unknown tiles, select the farthest one from all known tiles (where we can move to).
+                while (!unknownPositions.isEmpty()){
+                    var unknownPosition = unknownPositions.pop();
+                    for (var knownPosition: knownPositions) {
+                        double dist = getEuclideanDistance(knownPosition, unknownPosition);
+                        if (dist > maxDistance) {
+                            maxDistance = dist;
+                            destination = unknownPosition;
+                        }
+                    }
+
+                }
+            }else {
+                destination = Util.selectRandom(unknownPositions);
             }
+
         }else {
             // If all tiles are known, move towards an enemy city.
             Map<Position, EmpireCity> cities = game.getCitiesByPosition();

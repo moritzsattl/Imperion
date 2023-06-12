@@ -39,12 +39,10 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
     }
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) {
+    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         if(path == null){
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
             AStarNode currentNode = aStar.findPath(simulation);
-
-
             if(currentNode == null) return null;
 
             path = new ArrayDeque<>();
@@ -55,8 +53,15 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
                 // Next Position to move to
                 currentNode = currentNode.getPrev();
             }
+
+
         }
         path.poll();
+
+        if(path.isEmpty()){
+            throw new ExecutableActionFactoryException("Path to " + destination + " was not found by unit " + unit);
+        }
+
         return path;
 
     }
