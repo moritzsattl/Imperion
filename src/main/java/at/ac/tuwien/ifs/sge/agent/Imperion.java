@@ -13,6 +13,7 @@ import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
+import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
@@ -112,11 +113,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
             // If null then there are no more commands in queue
             if(commandWhichWasRejected != null){
-                // Try executing command again
+                // Try executing command again (only if movement to tile is possible)
                 log.info("Trying to execute command again");
                 MacroAction<A> macroAction = commandWhichWasRejected.getMacroAction();
                 if(macroAction instanceof MoveAction<A> moveAction){
-                    log.info("MoveMovementStartOrder failed");
                     GameStateNode<A> advancedGameState = new GameStateNode<>(game.copy(),null);
                     overwriteFirstCommandInCommandQueue(unitCommandQueues,new MoveAction<>(advancedGameState,unit,moveAction.getDestination(),unit.getPlayerId(),log,false));
                 }
@@ -360,6 +360,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         try {
             command = new Command<>(macroAction, macroAction.getResponsibleActions(unitCommandQueues));
         } catch (ExecutableActionFactoryException e) {
+            log.info(e);
             log.info(new ExecutableActionFactoryException("Command could not be build"));
         }
         if(macroAction instanceof MoveAction<A> moveAction){
@@ -516,6 +517,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 Thread.sleep(1000);
                 log._info_();
                 log.info("-----------------------Next game turn-------------------------");
+
 
                 // Copy the game state and apply the last determined actions, since those actions were not yet accepted and sent back
                 // from the engine server at this point in time

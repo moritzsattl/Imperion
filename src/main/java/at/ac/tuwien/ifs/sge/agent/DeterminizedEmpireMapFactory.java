@@ -15,7 +15,6 @@ import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrainType;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class DeterminizedEmpireMapFactory {
 
