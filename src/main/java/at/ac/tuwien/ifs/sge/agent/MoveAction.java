@@ -42,7 +42,7 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
 
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions() {
+    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) {
         if(path == null){
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
             AStarNode currentNode = aStar.findPath(simulation);

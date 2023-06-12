@@ -13,13 +13,10 @@ import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
-import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireInternalException;
-import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
-import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnitState;
 
 import java.util.*;
 import java.util.concurrent.Future;
@@ -114,7 +111,6 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     GameStateNode<A> advancedGameState = new GameStateNode<>(game.copy(),null);
                     overwriteFirstCommandInCommandQueue(unitCommandQueues,new MoveAction<>(advancedGameState,unit,moveAction.getDestination(),playerId,log,false));
                 }
-
             }
 
         }
@@ -164,7 +160,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         var determinizedGame = determinize((Empire) gameState.getGame());
         gameState.setGame((RealTimeGame<A, ?>) determinizedGame);
 
-        log.info(((DeterminizedEmpireGame) gameState.getGame()).getDeterminizedMap());
+        //log.info(((DeterminizedEmpireGame) gameState.getGame()).getDeterminizedMap());
 
         int EXPAND_NODES_COUNT = 1;
 
@@ -300,43 +296,52 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
 
     private void executeMacroAction(MacroActionType actionType, int playerId, GameStateNode<A> gameState, boolean simulate) throws ActionException, NoSuchElementException {
-        DeterminizedEmpireGame determinizedGame = (DeterminizedEmpireGame) gameState.getGame();
+        // For simplicity, don't allow simulation until everything works
+        if(!simulate){
+            var determinizedGame = (DeterminizedEmpireGame) gameState.getGame();
 
-        MacroAction<A> macroAction = new MacroActionFactory().createMacroAction(actionType, gameState, playerId, log, simulate);
+            MacroAction<A> macroAction = new MacroActionFactory().createMacroAction(actionType, gameState, playerId, log, simulate);
 
-        if(macroAction instanceof ExplorationMacroAction<A>){
-
-            MoveAction<A> moveAction = ((ExplorationMacroAction<A>) macroAction).generateExecutableAction();
-            if(!simulate){
-                //determinize((Empire) game.copy());
-                log.info(moveAction.getUnit() + " from " + moveAction.getUnit().getPosition() + " to " + moveAction.getDestination());
-            }
-
-            if(simulate){
-                addToCommandQueue(simulatedUnitCommandQueues,moveAction);
-                Queue<A> simulatedActions = simulateNextCommands(determinizedGame,playerId);
-                // Repeat until all actions were simulated
-                //log.info("Simulated actions in this simulation");
-                while(simulatedActions.size() > 0){
-                    //for (var actions:
-                    //     simulatedActions) {
-                    //    log.info(actions);
-                    //}
-                    simulatedActions = simulateNextCommands(determinizedGame,playerId);
+            Deque<MacroAction<A>> actions = null;
+            try{
+                if(simulate){
+                    actions = ((ExplorationMacroAction<A>) macroAction).generateExecutableAction(simulatedUnitCommandQueues);
+                }else{
+                    actions = ((ExplorationMacroAction<A>) macroAction).generateExecutableAction(unitCommandQueues);
                 }
-            }else{
-                addToCommandQueue(unitCommandQueues,moveAction);
+            }catch (ExecutableActionFactoryException e){
+
             }
 
-        }
+            log.info(actions);
+            // For each type macro action add to command queue
+            while (actions != null && !actions.isEmpty()){
+                MacroAction<A> action = actions.poll();
 
+                if(simulate){
+                    addToCommandQueue(simulatedUnitCommandQueues,action);
+                    Queue<A> simulatedActions = simulateNextCommands(determinizedGame,playerId);
+                    // Repeat until all actions were simulated
+                    while(simulatedActions.size() > 0){
+                        simulatedActions = simulateNextCommands(determinizedGame,playerId);
+                    }
+                }else{
+                    addToCommandQueue(unitCommandQueues,action);
+                }
+            }
+        }
     }
 
     private void addToCommandQueue(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues, MacroAction<A> macroAction) {
-        Command<A> command = new Command<>(macroAction, macroAction.getResponsibleActions());
+
+        Command<A> command = null;
+        try {
+            command = new Command<>(macroAction, macroAction.getResponsibleActions(unitCommandQueues));
+        } catch (ExecutableActionFactoryException e) {
+            log.info(new ExecutableActionFactoryException("Command could not be build"));
+        }
         if(macroAction instanceof MoveAction<A>){
             MoveAction moveAction = (MoveAction<A>) macroAction;
-            moveAction.getUnit().setState(EmpireUnitState.Moving);
 
             if(unitCommandQueues.containsKey(moveAction.getUnit())){
                 unitCommandQueues.get(moveAction.getUnit()).add(command);
@@ -346,15 +351,24 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 unitCommandQueues.put(moveAction.getUnit(),queue);
             }
         }
+        if(macroAction instanceof BuildAction<A>){
+            BuildAction buildAction = (BuildAction<A>) macroAction;
+
+            overwriteFirstCommandInCommandQueue(unitCommandQueues,buildAction);
+        }
 
 
     }
 
     private void overwriteFirstCommandInCommandQueue(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues,MacroAction<A> macroAction) {
-        Command<A> command = new Command<>(macroAction, macroAction.getResponsibleActions());
-        if(macroAction instanceof MoveAction<A>){
-            MoveAction moveAction = (MoveAction<A>) macroAction;
-            moveAction.getUnit().setState(EmpireUnitState.Moving);
+        Command<A> command = null;
+        try {
+            command = new Command<>(macroAction, macroAction.getResponsibleActions(unitCommandQueues));
+        } catch (ExecutableActionFactoryException e) {
+            log.info(new ExecutableActionFactoryException("Command could not be build"));
+        }
+
+        if(macroAction instanceof MoveAction<A> moveAction){
             if(unitCommandQueues.containsKey(moveAction.getUnit())){
                 unitCommandQueues.get(moveAction.getUnit()).pollFirst();
                 unitCommandQueues.get(moveAction.getUnit()).addFirst(command);
@@ -362,6 +376,17 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 Deque<Command<A>> queue = new ArrayDeque<>();
                 queue.add(command);
                 unitCommandQueues.put(moveAction.getUnit(),queue);
+            }
+        }
+
+        if(macroAction instanceof BuildAction<A> buildAction){
+            if(unitCommandQueues.containsKey(buildAction.getUnitOnCity())){
+                unitCommandQueues.get(buildAction.getUnitOnCity()).pollFirst();
+                unitCommandQueues.get(buildAction.getUnitOnCity()).addFirst(command);
+            }else{
+                Deque<Command<A>> queue = new ArrayDeque<>();
+                queue.add(command);
+                unitCommandQueues.put(buildAction.getUnitOnCity(),queue);
             }
         }
 
@@ -388,7 +413,6 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                     MovementStartOrder order = ((MovementStartOrder)action);
                     Position pos = order.getDestination();
-                    //log.info(game.getBoard().getEmpireTiles()[pos.getY()][pos.getY()]);
 
                     // If tiles is unknown, continue
                     if(game.getBoard().getEmpireTiles()[pos.getY()][pos.getY()] == null){
@@ -429,28 +453,35 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         for (var unitId : unitCommandQueues.keySet()) {
             Queue<Command<A>> queue = unitCommandQueues.get(unitId);
 
-            log.info("Commands in Queue for " + unitId);
-            for(Command command : queue) {
-                log.info(command);
-            }
-
             if (!queue.isEmpty()) {
                 Command<A> command = queue.peek();
 
-                // No more actions in this command, continue with the next one
+                // If all actions in a given command are executed, continue with the next one
                 if(command.getActions() == null || command.getActions().isEmpty()){
-                    queue.poll();
+                    do {
+                        queue.poll();
+                        command = queue.peek();
+                    } while (command != null && (command.getActions() == null || command.getActions().isEmpty()));
+                }
+
+
+                if(command == null){
                     continue;
                 }
 
+
+                // Check if there's an action to poll before doing the cast and assignment
+
                 A action = (A) command.getActions().poll();
+
+                if (action == null) {
+                    continue;
+                }
 
                 log.info("Next action for " + unitId + "\n" + action);
 
-                if(action != null){
-                    executedCommands.add(action);
-                    sendAction(action,System.currentTimeMillis() + 50);
-                }
+                executedCommands.add(action);
+                sendAction(action,System.currentTimeMillis() + 50);
             }
         }
 
@@ -465,21 +496,41 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
         while (true) {
             try {
+                Thread.sleep(200);
+                log.info("\nNext game turn");
                 // Copy the game state and apply the last determined actions, since those actions were not yet accepted and sent back
                 // from the engine server at this point in time
                 var gameState = game.copy();
 
-
+                // Apply event
                 if(lastExecutedCommands != null){
+                    int c = 1;
                     for (var action : lastExecutedCommands) {
                         if(action != null && gameState.isValidAction(action, playerId)){
-                            gameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, gameState.getGameClock().getGameTimeMs() + 1));
+                            gameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, gameState.getGameClock().getGameTimeMs() + c));
+                            c++;
                         }
                     }
                 }
 
                 // Advance the game state in time by the decision pace since this is the point in time that the next best action will be sent
-                gameState.advance(DEFAULT_DECISION_PACE_MS + 100);
+                try{
+                    if(lastExecutedCommands != null && !lastExecutedCommands.isEmpty()){
+                        gameState.advance(DEFAULT_DECISION_PACE_MS);
+                    }
+                }catch(ActionException e){
+                    log.info(e);
+                    StringBuilder sb = new StringBuilder();
+                    for (StackTraceElement element : e.getStackTrace()) {
+                        sb.append(element.toString());
+                        sb.append("\n");
+                    }
+                    String stackTrace = sb.toString();
+                    log.info(stackTrace);
+                }
+
+                //log.info(gameState.getBoard());
+
 
 
                 // Create a new tree with the game state as root
@@ -540,7 +591,6 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
 
                 if(lastDeterminedActionType != null){
-                    //log.info("execute");
                     try{
                         executeMacroAction(lastDeterminedActionType,playerId,advancedGameState.getNode(),false);
                     }catch (NoSuchElementException e){
@@ -548,6 +598,13 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     }
                 }
 
+                for (var unit :
+                        unitCommandQueues.keySet()) {
+                    log.info("Commands in queue for " + unit.getId());
+                    for (Command<A> command: unitCommandQueues.get(unit)) {
+                        log.info(command);
+                    }
+                }
                 // Executes for each unit there next actions in their own unit action command queue
                 lastExecutedCommands = executeNextCommands();
 

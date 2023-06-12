@@ -63,7 +63,7 @@ public class DeterminizedEmpireMapFactory {
         for (int y = 0; y < map.length; y++) {
             for (int x = 0; x < map[y].length; x++) {
                 Position pos = new Position(x,y);
-                if (!configuration.getStartingCities().contains(pos) /*&& !knownPositions.contains(pos)*/) {
+                if (!configuration.getStartingCities().contains(pos) && !knownPositions.contains(pos)) {
                     unknownPositions.add(pos);
                 }
             }
@@ -71,7 +71,9 @@ public class DeterminizedEmpireMapFactory {
 
         // Set known positions to know map identifier
         for (var knownPos: knownPositions) {
-            map[knownPos.getY()][knownPos.getX()] = game.getBoard().getEmpireTiles()[knownPos.getY()][knownPos.getX()].getMapIdentifier();
+            if(game.getBoard().getEmpireTiles()[knownPos.getY()][knownPos.getX()] != null){
+                map[knownPos.getY()][knownPos.getX()] = game.getBoard().getEmpireTiles()[knownPos.getY()][knownPos.getX()].getMapIdentifier();
+            }
         }
 
         // set all unknown positions to be grass
