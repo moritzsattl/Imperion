@@ -1,7 +1,9 @@
 package at.ac.tuwien.ifs.sge.agent;
 import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
+import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 class GameStateNode<A> extends ImperionRealTimeGameNode<A> {
@@ -13,7 +15,6 @@ class GameStateNode<A> extends ImperionRealTimeGameNode<A> {
         super(game, actionsTaken);
         winsForPlayer = new int[game.getNumberOfPlayers()];
     }
-
 
     public int incrementWinsForPlayer(int playerId) {
         return ++winsForPlayer[playerId];
@@ -29,6 +30,11 @@ class GameStateNode<A> extends ImperionRealTimeGameNode<A> {
 
     public int getVisits() {
         return visits;
+    }
+
+    @Override
+    public List<EmpireCity> knownOtherCities(int playerId) {
+        return super.knownOtherCities(playerId);
     }
 
     @Override

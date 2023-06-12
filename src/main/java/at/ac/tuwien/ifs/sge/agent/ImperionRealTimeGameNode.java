@@ -2,8 +2,8 @@ package at.ac.tuwien.ifs.sge.agent;
 
 import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
+import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
-import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnitState;
 
 import java.util.*;
 
@@ -55,6 +55,10 @@ class ImperionRealTimeGameNode<A> {
 
 
 
+            if(!knownOtherCities(playerId).isEmpty()) {
+                actions.add(MacroActionType.EXPANSION);
+            }
+
             //TODO: add only macro actions if certain Empire events exist at the moment
             // For example: Only add MOVE_UNITS MacroActionType is there is possible actions 'MovementOrder' from the game
 
@@ -62,6 +66,17 @@ class ImperionRealTimeGameNode<A> {
         }
 
         return getAllPossibleMacroActionsByPlayer;
+    }
+
+    public List<EmpireCity> knownOtherCities(int playerId) {
+        var citiesMap = ((Empire) game).getCitiesByPosition();
+        List<EmpireCity> cities = new ArrayList<>();
+        for (var city: citiesMap.values()) {
+            if (city.getPlayerId() != playerId) {
+                cities.add(city);
+            }
+        }
+        return cities;
     }
 
     public void setGame(RealTimeGame<A, ?> game) {

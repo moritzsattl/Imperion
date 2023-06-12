@@ -9,6 +9,8 @@ import java.util.Map;
 
 public interface MacroAction<A>{
 
+    Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException;
+
     Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException;
 
     void simulate() throws ActionException;

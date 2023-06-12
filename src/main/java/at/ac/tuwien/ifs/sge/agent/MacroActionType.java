@@ -1,7 +1,8 @@
 package at.ac.tuwien.ifs.sge.agent;
 
 public enum MacroActionType {
-    EXPLORATION("EXPLORATION");
+    EXPLORATION("EXPLORATION"),
+    EXPANSION("EXPANSION");
 
 
     private final String displayName;

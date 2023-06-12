@@ -39,6 +39,11 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
     }
 
     @Override
+    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit, Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+        return null;
+    }
+
+    @Override
     public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) {
 
         Deque<EmpireEvent> buildActions = new LinkedList<>();
