@@ -24,7 +24,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         this.destinations = null;
     }
 
-    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<A>> actions = new LinkedList<>();
 
         if (units.isEmpty()) {
@@ -36,7 +36,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         ArrayList<EmpireUnit> notBusyUnits = new ArrayList<>();
 
         for (var unit: units) {
-            if(!unitCommandQueues.containsKey(unit) || unitCommandQueues.get(unit).isEmpty()){
+            if(!unitsCommandQueues.containsKey(unit) || unitsCommandQueues.get(unit).isEmpty()){
                 notBusyUnits.add(unit);
             }
         }

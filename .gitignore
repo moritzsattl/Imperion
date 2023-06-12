@@ -1,4 +1,4 @@
-# Project exclude paths
+:wq# Project exclude paths
 /.gradle/
 /.idea/
 /build/
