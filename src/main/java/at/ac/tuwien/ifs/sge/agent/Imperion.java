@@ -13,7 +13,6 @@ import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
-import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
@@ -35,14 +34,15 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
     private static final double DEFAULT_EXPLOITATION_CONSTANT = Math.sqrt(2);
     private static final int DEFAULT_SIMULATION_PACE_MS = 1000;
     private static final int DEFAULT_SIMULATION_DEPTH = 20;
-    private static final int DEFAULT_DECISION_PACE_MS = 2500;
+    private static final int DEFAULT_DECISION_PACE_MS = 1000;
+
 
     private final Comparator<Tree<GameStateNode<A>>> selectionComparator;
 
     private final Comparator<Tree<GameStateNode<A>>> treeMoveComparator;
 
-    private Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues;
-    private Map<EmpireUnit,Deque<Command<A>>> simulatedUnitCommandQueues;
+    private final Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues;
+    private final Map<EmpireUnit,Deque<Command<A>>> simulatedUnitCommandQueues;
 
 
     public Imperion(Class<G> gameClass, int playerId, String playerName, int logLevel) {
@@ -118,7 +118,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 MacroAction<A> macroAction = commandWhichWasRejected.getMacroAction();
                 if(macroAction instanceof MoveAction<A> moveAction){
                     GameStateNode<A> advancedGameState = new GameStateNode<>(game.copy(),null);
-                    overwriteFirstCommandInCommandQueue(unitCommandQueues,new MoveAction<>(advancedGameState,unit,moveAction.getDestination(),unit.getPlayerId(),log,false));
+                    overwriteFirstCommandInCommandQueue(unitCommandQueues,new MoveAction<>(advancedGameState,unit, null,moveAction.getDestination(),unit.getPlayerId(),log,false));
                 }
             }
 

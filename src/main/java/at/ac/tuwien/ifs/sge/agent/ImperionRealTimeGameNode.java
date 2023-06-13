@@ -55,9 +55,9 @@ class ImperionRealTimeGameNode<A> {
 
 
 
-            //if(!knownOtherCities(playerId).isEmpty()) {
-            //    actions.add(MacroActionType.EXPANSION);
-            //}
+            if(!knownOtherCities(playerId).isEmpty()) {
+                actions.add(MacroActionType.EXPANSION);
+            }
 
             //TODO: add only macro actions if certain Empire events exist at the moment
             // For example: Only add MOVE_UNITS MacroActionType is there is possible actions 'MovementOrder' from the game

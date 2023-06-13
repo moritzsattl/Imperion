@@ -4,7 +4,6 @@ import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.core.util.Util;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
-import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
@@ -59,7 +58,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
             selectedUnit = Util.selectRandom(scouts);
         }
 
-        BuildAction<A> buildAction = null;
+        BuildAction<A> buildAction;
 
         // If no scout unit or all are busy is here, build one
         if(selectedUnit == null){
@@ -67,7 +66,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
                 // If we have a unit (not a scout) on a city, make production order for scout (if not already producing)
                 if(game.getCitiesByPosition().containsKey(unit.getPosition())){
-                    if(game.getCity(unit.getPosition()).getState() == EmpireProductionState.Idle && !unit.getUnitTypeName().equals("2")){
+                    if(game.getCity(unit.getPosition()).getState() == EmpireProductionState.Idle && unit.getUnitTypeId() != 2){
                         buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unit.getPosition()),unit, 2);
                         actions.add(buildAction);
                     }
@@ -146,7 +145,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
                 }
             }
 
-            if(enemyCities == null || enemyCities.isEmpty()){
+            if(enemyCities.isEmpty()){
                 throw new ExecutableActionFactoryException();
             }
 
@@ -158,7 +157,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
             throw new ExecutableActionFactoryException();
         }
 
-        MoveAction<A> moveAction = new MoveAction<A>(gameStateNode, selectedUnit, destination,playerId, log, simulation);
+        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination,playerId, log, simulation);
         actions.add(moveAction);
 
         return actions;
@@ -175,7 +174,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         Set<Position> validLocations = new HashSet<>();
 
         // Get empire map and empire tiles
-        EmpireMap map = (EmpireMap) game.getBoard();
+        EmpireMap map = game.getBoard();
         EmpireTerrain[][] empireTiles = map.getEmpireTiles();
 
         // Initialize queue for positions to be checked and set to store checked positions
