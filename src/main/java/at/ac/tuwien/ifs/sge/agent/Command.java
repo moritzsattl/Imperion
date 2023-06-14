@@ -2,14 +2,15 @@ package at.ac.tuwien.ifs.sge.agent;
 
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 
+import java.util.Deque;
 import java.util.Queue;
 
 public class Command<A> {
     private MacroAction<A> macroAction;
 
-    private Queue<EmpireEvent> actions;
+    private Deque<EmpireEvent> actions;
 
-    public Command(MacroAction<A> marcoAction, Queue<EmpireEvent> actions) {
+    public Command(MacroAction<A> marcoAction, Deque<EmpireEvent> actions) {
         this.macroAction = marcoAction;
         this.actions = actions;
     }
@@ -18,7 +19,7 @@ public class Command<A> {
         return macroAction;
     }
 
-    public Queue<EmpireEvent> getActions() {
+    public Deque<EmpireEvent> getActions() {
         return actions;
     }
 

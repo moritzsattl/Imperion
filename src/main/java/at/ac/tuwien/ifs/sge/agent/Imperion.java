@@ -15,6 +15,7 @@ import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.Movement
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
+import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
@@ -42,7 +43,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
     private final Comparator<Tree<GameStateNode<A>>> treeMoveComparator;
 
     private final Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues;
+    private final Map<String,Deque<Command<A>>> cityCommandQueue;
     private final Map<EmpireUnit,Deque<Command<A>>> simulatedUnitCommandQueues;
+    private final Map<String,Deque<Command<A>>> simulatedCityCommandQueues;
+
 
 
     public Imperion(Class<G> gameClass, int playerId, String playerName, int logLevel) {
@@ -76,7 +80,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
         this.unitCommandQueues = new HashMap<>();
         this.simulatedUnitCommandQueues = new HashMap<>();
-
+        this.cityCommandQueue = new HashMap<>();
+        this.simulatedCityCommandQueues = new HashMap<>();
     }
 
     @Override
@@ -335,26 +340,29 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 log.info(e);
             }
 
-            log.info("Add following actions to UnitCommandQueue:\n" + actions);
+            log.info("Add following actions to Queues");
+
+            log.info(actions);
+
             // For each type macro action add to command queue
             while (actions != null && !actions.isEmpty()){
                 MacroAction<A> action = actions.poll();
 
                 if(simulate){
-                    addToCommandQueue(simulatedUnitCommandQueues,action);
+                    addToCommandQueue(simulatedUnitCommandQueues, simulatedCityCommandQueues,action);
                     Queue<A> simulatedActions = simulateNextCommands(determinizedGame,playerId);
                     // Repeat until all actions were simulated
                     while(simulatedActions.size() > 0){
                         simulatedActions = simulateNextCommands(determinizedGame,playerId);
                     }
                 }else{
-                    addToCommandQueue(unitCommandQueues,action);
+                    addToCommandQueue(unitCommandQueues, cityCommandQueue,action);
                 }
             }
         }
     }
 
-    private void addToCommandQueue(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues, MacroAction<A> macroAction) {
+    private void addToCommandQueue(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues, Map<String,Deque<Command<A>>> cityCommandQueues, MacroAction<A> macroAction) {
 
         Command<A> command = null;
         try {
@@ -373,8 +381,13 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             }
         }
         if(macroAction instanceof BuildAction<A> buildAction){
-
-            overwriteFirstCommandInCommandQueue(unitCommandQueues,buildAction);
+            if(cityCommandQueues.containsKey(buildAction.getCity())){
+                cityCommandQueues.get(buildAction.getCity()).add(command);
+            }else{
+                Deque<Command<A>> queue = new ArrayDeque<>();
+                queue.add(command);
+                cityCommandQueues.put(buildAction.getCity(),queue);
+            }
         }
 
 
@@ -398,18 +411,6 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 unitCommandQueues.put(moveAction.getUnit(),queue);
             }
         }
-
-        if(macroAction instanceof BuildAction<A> buildAction){
-            if(unitCommandQueues.containsKey(buildAction.getEmpireUnitOnCityPosition())){
-                unitCommandQueues.get(buildAction.getEmpireUnitOnCityPosition()).pollFirst();
-                unitCommandQueues.get(buildAction.getEmpireUnitOnCityPosition()).addFirst(command);
-            }else{
-                Deque<Command<A>> queue = new ArrayDeque<>();
-                queue.add(command);
-                unitCommandQueues.put(buildAction.getEmpireUnitOnCityPosition(),queue);
-            }
-        }
-
     }
 
     private Queue<A> simulateNextCommands(Empire game, int playerId) {
@@ -464,6 +465,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             }
         }
 
+        // TODO: Add simulation for city commands
         return simulatedCommands;
     }
 
@@ -489,10 +491,48 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 }
 
                 if(!game.getPossibleActions(playerId).contains(action)){
+                    //TODO: Calculate new path for MoveAction, if action is invalid for some reason,
+
                     log.info("Action not possible, removing from command queue");
                 }else{
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
+
+                    // If command is not empty, and it back to the queue
+                    if(!command.getActions().isEmpty()){
+                        queue.addFirst(command);
+                    }
+                }
+            }
+            offset++;
+        }
+
+        for (var city: cityCommandQueue.keySet()) {
+            Deque<Command<A>> queue = cityCommandQueue.get(city);
+
+            if (!queue.isEmpty()) {
+                Command<A> command = queue.poll();
+
+                if(command == null || command.getActions() == null || command.getActions().isEmpty()){
+                    continue;
+                }
+
+                A action = (A) command.getActions().peek();
+
+                if (action == null) {
+                    continue;
+                }
+
+                if(!game.getPossibleActions(playerId).contains(action)){
+                    // If production order not valid yet, wait for it to be valid, maybe something else is producing right now
+
+                    log.info("Action not possible yet, add it back to command queue");
+                }else{
+                    executedCommands.add(action);
+                    sendAction(action,System.currentTimeMillis() + offset);
+
+                    // Successfully send, now it can be remove from the queue
+                    command.getActions().poll();
 
                     // If command is not empty, and it back to the queue
                     if(!command.getActions().isEmpty()){
@@ -627,6 +667,15 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     log._info_();
                     log.info("Commands in queue for " + unit.getId());
                     for (Command<A> command: unitCommandQueues.get(unit)) {
+                        log.info(command);
+                    }
+                }
+
+                for (var city :
+                        cityCommandQueue.keySet()) {
+                    log._info_();
+                    log.info("Commands in queue for " + city);
+                    for (Command<A> command: cityCommandQueue.get(city)) {
                         log.info(command);
                     }
                 }
