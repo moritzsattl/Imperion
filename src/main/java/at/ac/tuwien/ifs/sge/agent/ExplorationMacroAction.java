@@ -27,21 +27,70 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
     public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<A>> actions = new LinkedList<>();
 
-        // Get units which are not busy
-        ArrayList<EmpireUnit> notBusyUnits = new ArrayList<>();
+        // Get units which are not busy (so no commands are scheduled or which are last unit on city tile)
+        HashSet<EmpireUnit> notBusyUnits = new HashSet<>();
+
+        HashSet<EmpireUnit> notBusyUnitsOnCities = new HashSet<>();
+
+        HashSet<EmpireUnit> notBusyUnitsOnCitiesWhichAreNotProducing = new HashSet<>();
+
 
         for (var unit: units) {
-            if(unitCommandQueues.get(unit) == null || unitCommandQueues.get(unit).isEmpty()){
-                notBusyUnits.add(unit);
+            var unitPosition = unit.getPosition();
+            // Unit which are not busy
+            if((unitCommandQueues.get(unit) == null || unitCommandQueues.get(unit).isEmpty())){
+
+                if(!game.getCitiesByPosition().containsKey(unitPosition)){
+                    // Units which are not on cities
+                    notBusyUnits.add(unit);
+                }else{
+                    // Units on city
+                    notBusyUnitsOnCities.add(unit);
+
+
+                    // Cities with units on it, which are not producing
+                    if(game.getCity(unit.getPosition()).getState() == EmpireProductionState.Idle){
+                        // Unit has to be added instead of city, because build action need units as parameter
+                        notBusyUnitsOnCitiesWhichAreNotProducing.add(unit);
+                    }
+                }
             }
         }
 
-        log.info("Units which are not busy: " + notBusyUnits);
+        // Error happens, when multiple units are on city tile, because then all are free in the current scenario, so
+        // one unit from cities with multiple Occupants should remain there, so it is actually busy and has to be removed from notBusyUnitsOnCities
+        // Error happens, when multiple units are on city tile, because then all are free in the current scenario, so
+        // one unit from cities should remain there, so it is actually busy and has to be removed from notBusyUnitsOnCities
+        HashSet<Position> alreadyCheckedPositions = new HashSet<>();
+        HashMap<Position, List<EmpireUnit>> positionToUnitsMap = new HashMap<>();
+        HashSet<EmpireUnit> unitsToRemove = new HashSet<>();
 
-        if (units.isEmpty()) {
-            // No move action possible if no units are available.
-            throw new ExecutableActionFactoryException("No units are available");
+        // Step 1: Fill the map
+        for (EmpireUnit unit : notBusyUnitsOnCities) {
+            Position position = unit.getPosition();
+            if (!positionToUnitsMap.containsKey(position)) {
+                positionToUnitsMap.put(position, new ArrayList<>());
+            }
+            positionToUnitsMap.get(position).add(unit);
         }
+
+        // Step 2: Select units to remove
+        for (Map.Entry<Position, List<EmpireUnit>> entry : positionToUnitsMap.entrySet()) {
+            List<EmpireUnit> unitsAtPosition = entry.getValue();
+            if (!alreadyCheckedPositions.contains(entry.getKey())) {
+                // select one unit to remove at random
+                EmpireUnit unitToRemove = Util.selectRandom(unitsAtPosition);
+                unitsToRemove.add(unitToRemove);
+                alreadyCheckedPositions.add(entry.getKey());
+            }
+        }
+
+        // Step 3: Remove the selected units
+        notBusyUnitsOnCities.removeAll(unitsToRemove);
+
+        // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
+        notBusyUnits.addAll(notBusyUnitsOnCities);
+
 
         // Select scout unit
         EmpireUnit selectedUnit = null;
@@ -60,40 +109,44 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
         BuildAction<A> buildAction;
 
-        // If no scout unit or all are busy is here, build one
+        // If no scout unit available or all are busy is here, build one
         if(selectedUnit == null){
-            for (var unit : notBusyUnits) {
 
-                // If we have a unit (not a scout) on a city, make production order for scout (if not already producing)
-                if(game.getCitiesByPosition().containsKey(unit.getPosition())){
-                    if(game.getCity(unit.getPosition()).getState() == EmpireProductionState.Idle && unit.getUnitTypeId() != 2){
-                        buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unit.getPosition()),unit, 2);
-                        actions.add(buildAction);
-                    }
+            EmpireUnit unitOnCity = null;
+            // Select a random non producing city with units on it and produce scout
+            if(!notBusyUnitsOnCitiesWhichAreNotProducing.isEmpty()) {
+                unitOnCity = Util.selectRandom(notBusyUnitsOnCitiesWhichAreNotProducing);
+            }else {
+                // In this case all cities are producing, so we just want to queue a build order for a random City
+                if(!notBusyUnitsOnCities.isEmpty()){
+                    unitOnCity = Util.selectRandom(notBusyUnitsOnCities);
                 }
             }
+
+            // Schedule production order
+            if(unitOnCity != null) {
+                buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unitOnCity.getPosition()),unitOnCity, 2);
+                actions.add(buildAction);
+            }
+
 
             // Select other unit for scouting instead of scout for MoveAction
-            for (var unit : notBusyUnits) {
-                // If unit not on city, select it
-                if(!game.getCitiesByPosition().containsKey(unit.getPosition())){
-                    selectedUnit = unit;
-                    break;
-                }
-            }
+            selectedUnit = Util.selectRandom(notBusyUnits);
         }
+
+        log.info("Not busy units: " + notBusyUnits);
 
         // If no units are free and all cities are producing throw exception
         if(selectedUnit == null){
             if(actions.isEmpty()){
-                throw new ExecutableActionFactoryException("No units available and cities are all producing");
+                throw new ExecutableActionFactoryException("All units busy or last on city tile, just ordered build action");
             }
             // If there are no units, which are free (not last unit on a city tile) just order buildAction
             return actions;
         }
 
 
-        Set<Position> knownPositions = getKnownPositions(notBusyUnits.get(0).getPosition());
+        Set<Position> knownPositions = getKnownPositions(selectedUnit.getPosition());
 
         Stack<Position> unknownPositions = new Stack<>();
         for (int y = 0; y < game.getBoard().getEmpireTiles().length; y++) {
