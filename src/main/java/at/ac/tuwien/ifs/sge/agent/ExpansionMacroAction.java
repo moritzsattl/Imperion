@@ -129,11 +129,15 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
                 actions.add(buildAction);
             }
 
+            // TODO: Maybe select the infantry unit which is closest to the city
             // Select other unit for expansion instead of infantry for MoveAction
             selectedUnit = Util.selectRandom(notBusyUnits);
         }
 
         log.info("Not busy units: " + notBusyUnits);
+
+
+        // TODO: Maybe force nearest ally to city for expansion, if all are units are busy
 
         // If no units are free and buildAction could not be scheduled, throw exception
         if(selectedUnit == null){

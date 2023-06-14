@@ -15,19 +15,22 @@ import java.util.Map;
 
 public class BuildAction<A> extends AbstractMacroAction<A> {
 
+    private final String empireCityName;
     private final EmpireCity empireCity;
     private final EmpireUnit empireUnitOnCity;
     private final int unitTypeName;
 
     public BuildAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation, EmpireCity empireCity,EmpireUnit empireUnit, int unitTypeName) {
         super(gameStateNode, playerId, log, simulation);
+        this.empireCityName = empireCity.toString();
         this.empireCity = empireCity;
         this.unitTypeName = unitTypeName;
         this.empireUnitOnCity = empireUnit;
     }
 
-    public EmpireCity getCity() {
-        return empireCity;
+    public String getCity() {
+        // EmpireCity has no ID, its String representation is used;
+        return "City " + empireCity.getPosition();
     }
 
     public EmpireUnit getEmpireUnitOnCityPosition() {
@@ -48,10 +51,7 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
 
         Deque<EmpireEvent> buildActions = new LinkedList<>();
 
-        if(game.getCity(empireCity.getPosition()).getState() == EmpireProductionState.Idle){
-            buildActions.add(new ProductionStartOrder(empireCity.getPosition(),unitTypeName));
-            //buildActions.add(new ProductionStopOrder(empireUnit.getPosition()));
-        }
+        buildActions.add(new ProductionStartOrder(empireCity.getPosition(),unitTypeName));
 
 
         return buildActions;
@@ -65,7 +65,7 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
     @Override
     public String toString() {
         return "BuildAction{" +
-                "empireUnit=" + empireCity +
+                "empireCity=" + empireCity +
                 ", unitTypeName=" + unitTypeName +
                 '}';
     }
