@@ -1,14 +1,9 @@
 package at.ac.tuwien.ifs.sge.agent;
 
 import at.ac.tuwien.ifs.sge.core.util.Util;
-import at.ac.tuwien.ifs.sge.core.util.pair.ImmutablePair;
-import at.ac.tuwien.ifs.sge.core.util.pair.Pair;
-import at.ac.tuwien.ifs.sge.game.empire.configuration.RandomMapGenerator;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
-import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.configuration.EmpireConfiguration;
-import at.ac.tuwien.ifs.sge.game.empire.model.configuration.RandomMapGeneratorConfig;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrainType;
@@ -36,11 +31,6 @@ public class DeterminizedEmpireMapFactory {
 
         this.knownPositions = knownPositions;
         this.config = game.getGameConfiguration();
-    }
-
-    private double getEuclideanDistance(Position a, Position b) {
-        var diff = a.subtract(b);
-        return Math.sqrt(diff.getX() * diff.getX() + diff.getY() * diff.getY());
     }
 
     public DeterminizedEmpireMap simpleDeterminzeMap(){
@@ -149,7 +139,7 @@ public class DeterminizedEmpireMapFactory {
                         for (EmpireUnit enemyUnit : enemyUnitsLastSeen.keySet()) {
                             if(!alreadyPlaced.contains(enemyUnit.getId())){
                                 LastSeenInfo lastSeenInfo = enemyUnitsLastSeen.get(enemyUnit);
-                                double distanceToTile = getEuclideanDistance(lastSeenInfo.getPosition(), pos);
+                                double distanceToTile = Imperion.getEuclideanDistance(lastSeenInfo.getPosition(), pos);
                                 long secondsPassed = (game.getGameClock().getGameDurationMs() - lastSeenInfo.getTimeStamp()) / 1000;
 
                                 // Check if the enemy unit could have reached the tile based on its speed
@@ -217,7 +207,7 @@ public class DeterminizedEmpireMapFactory {
         double closestCityDistance = Double.MAX_VALUE;
 
         for (Position cityPos : config.getStartingCities()) {
-            double distance = getEuclideanDistance(cityPos, pos);
+            double distance = Imperion.getEuclideanDistance(cityPos, pos);
             if (distance < closestCityDistance) {
                 closestCityDistance = distance;
             }

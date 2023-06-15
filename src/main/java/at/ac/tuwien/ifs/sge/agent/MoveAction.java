@@ -68,10 +68,6 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
 
     }
 
-    @Override
-    public void simulate() throws ActionException {
-        //TODO: Add implementation
-    }
 
     //TODO: Add further methods...
 
