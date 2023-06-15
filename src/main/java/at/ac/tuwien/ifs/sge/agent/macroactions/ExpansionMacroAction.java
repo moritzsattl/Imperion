@@ -141,6 +141,10 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
             }
         }
 
+        //TODO: Force Unit to expand to with
+
+        //TODO: Only go to city, if none other units already go there for expansion
+
         // If there is a free infantry unit, then select one
         if(!infantries.isEmpty()){
             Object[] selectedPair = findClosestPair(emptyCities, infantries);
