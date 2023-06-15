@@ -27,6 +27,64 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
     public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<A>> actions = new LinkedList<>();
 
+        Set<Position> knownPositions = getKnownPositions(game.getUnitsByPlayer(playerId).get(0).getPosition());
+
+        Stack<Position> unknownPositions = new Stack<>();
+        for (int y = 0; y < game.getBoard().getEmpireTiles().length; y++) {
+            for (int x = 0; x < game.getBoard().getEmpireTiles()[y].length; x++) {
+                var pos = new Position(x,y);
+                if(!knownPositions.contains(pos)){
+                    unknownPositions.push(pos);
+                }
+            }
+        }
+
+        double FAR_EXPLORATION_CONSTANT = 0.6;
+        Random rand = new Random();
+
+        double maxDistance = -1;
+        Position destination = null;
+        if(!unknownPositions.isEmpty()){
+
+            if(rand.nextDouble() > FAR_EXPLORATION_CONSTANT){
+                // If there are unknown tiles, select the farthest one from all known tiles (where we can move to).
+                while (!unknownPositions.isEmpty()){
+                    var unknownPosition = unknownPositions.pop();
+                    for (var knownPosition: knownPositions) {
+                        double dist = Imperion.getEuclideanDistance(knownPosition, unknownPosition);
+                        if (dist > maxDistance) {
+                            maxDistance = dist;
+                            destination = unknownPosition;
+                        }
+                    }
+
+                }
+            } else {
+                destination = Util.selectRandom(unknownPositions);
+            }
+
+        }else {
+            // If all tiles are known, move towards an enemy city.
+            Map<Position, EmpireCity> cities = game.getCitiesByPosition();
+
+            // Valid Cities
+            List<EmpireCity> enemyCities = new ArrayList<>();
+
+            for (var pos: cities.keySet()) {
+                // If city doesn't belong to player with playerId, add to possible destinations
+                if(game.getCity(pos).getPlayerId() != playerId){
+                    enemyCities.add(game.getCity(pos));
+                }
+            }
+
+            if(enemyCities.isEmpty()){
+                throw new ExecutableActionFactoryException();
+            }
+
+            destination = Util.selectRandom(enemyCities).getPosition();
+
+        }
+
         // Get units which are not busy (so no commands are scheduled or which are last unit on city tile)
         HashSet<EmpireUnit> notBusyUnits = new HashSet<>();
 
@@ -111,7 +169,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         // Select scout unit
         EmpireUnit selectedUnit = null;
 
-        List<EmpireUnit> scouts = new ArrayList<>();
+        HashSet<EmpireUnit> scouts = new HashSet<>();
         for (var unit : notBusyUnits) {
             // Select Scout
             if (unit.getUnitTypeName().equals("Scout")) {
@@ -121,13 +179,14 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         }
 
         if(!scouts.isEmpty()){
-            selectedUnit = Util.selectRandom(scouts);
+            //selectedUnit = Util.selectRandom(scouts);
+            selectedUnit = findClosestUnit(destination, scouts);
         }
 
-        BuildAction<A> buildAction;
 
         // If no scout unit available or all are busy is here, build one
         if(selectedUnit == null){
+            BuildAction<A> buildAction;
 
             EmpireUnit unitOnCity = null;
             // Select a random non producing city with units on it and produce scout
@@ -148,7 +207,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
 
             // Select other unit for scouting instead of scout for MoveAction
-            selectedUnit = Util.selectRandom(notBusyUnits);
+            selectedUnit = findClosestUnit(destination, notBusyUnits);
         }
 
         log.info("Not busy units: " + notBusyUnits);
@@ -163,64 +222,6 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         }
 
 
-        Set<Position> knownPositions = getKnownPositions(selectedUnit.getPosition());
-
-        Stack<Position> unknownPositions = new Stack<>();
-        for (int y = 0; y < game.getBoard().getEmpireTiles().length; y++) {
-            for (int x = 0; x < game.getBoard().getEmpireTiles()[y].length; x++) {
-                var pos = new Position(x,y);
-                if(!knownPositions.contains(pos)){
-                    unknownPositions.push(pos);
-                }
-            }
-        }
-
-        double FAR_EXPLORATION_CONSTANT = 0.6;
-        Random rand = new Random();
-
-        double maxDistance = -1;
-        Position destination = null;
-        if(!unknownPositions.isEmpty()){
-
-            if(rand.nextDouble() > FAR_EXPLORATION_CONSTANT){
-                // If there are unknown tiles, select the farthest one from all known tiles (where we can move to).
-                while (!unknownPositions.isEmpty()){
-                    var unknownPosition = unknownPositions.pop();
-                    for (var knownPosition: knownPositions) {
-                        double dist = Imperion.getEuclideanDistance(knownPosition, unknownPosition);
-                        if (dist > maxDistance) {
-                            maxDistance = dist;
-                            destination = unknownPosition;
-                        }
-                    }
-
-                }
-            }else {
-                destination = Util.selectRandom(unknownPositions);
-            }
-
-        }else {
-            // If all tiles are known, move towards an enemy city.
-            Map<Position, EmpireCity> cities = game.getCitiesByPosition();
-
-            // Valid Cities
-            List<EmpireCity> enemyCities = new ArrayList<>();
-
-            for (var pos: cities.keySet()) {
-                // If city doesn't belong to player with playerId, add to possible destinations
-                if(game.getCity(pos).getPlayerId() != playerId){
-                    enemyCities.add(game.getCity(pos));
-                }
-            }
-
-            if(enemyCities.isEmpty()){
-                throw new ExecutableActionFactoryException();
-            }
-
-            destination = Util.selectRandom(enemyCities).getPosition();
-
-        }
-
         if (destination == null) {
             throw new ExecutableActionFactoryException();
         }
@@ -229,6 +230,18 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         actions.add(moveAction);
 
         return actions;
+    }
+
+    private static EmpireUnit findClosestUnit(Position position, HashSet<EmpireUnit> units) {
+        EmpireUnit result = null;
+        double closest = Double.MAX_VALUE;
+        for (var unit : units) {
+            double temp = Imperion.getEuclideanDistance(position, unit.getPosition());
+            if (temp < closest) {
+                result = unit;
+            }
+        }
+        return result;
     }
 
 
