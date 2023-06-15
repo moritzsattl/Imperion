@@ -51,10 +51,11 @@ public class AStar {
 
             closedList[currentNode.getX()][currentNode.getY()] = true;
 
-
+            //log.info(currentNode);
             if (isEndNode(currentNode)) {
                 return currentNode;
             } else {
+
                 addAdjacentNodes(currentNode);
             }
         }
@@ -98,10 +99,8 @@ public class AStar {
                             }
                         }
                     }
-                }catch (EmpireMapException e){
-
                 }catch (Exception e){
-
+                    log.info(e);
                 }
             }
 
