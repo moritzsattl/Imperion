@@ -13,10 +13,12 @@ import java.util.*;
 public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
     private final List<EmpireCity> nonFriendlyCities;
     private Deque<EmpireEvent> path;
+    private final boolean force;
 
-    public ExpansionMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation) {
+    public ExpansionMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation, boolean force) {
         super(gameStateNode, playerId, log, simulation);
         this.nonFriendlyCities = gameStateNode.knownOtherCities(playerId);
+        this.force = force;
     }
 
 
@@ -110,7 +112,6 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         notBusyUnits.addAll(notBusyUnitsOnCities);
         log.info("Not busy units: " + notBusyUnits);
 
-
         ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
 
         for (var unit : busyForProductionUnitsOnCity) {
@@ -122,9 +123,16 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         }
 
 
+        List<EmpireUnit> serialize;
+        if (force) {
+            serialize = new ArrayList<>(units);
+            serialize.removeAll(busyForProductionUnitsOnCity);
+        } else {
+            serialize = notBusyUnits;
+        }
         List<EmpireUnit> infantries = new ArrayList<>();
         // Get all free Infantry units
-        for (var unit : notBusyUnits) {
+        for (var unit : serialize ) {
             // Select Infantry
             if (unit.getUnitTypeName().equals("Infantry")) {
                 infantries.add(unit);
