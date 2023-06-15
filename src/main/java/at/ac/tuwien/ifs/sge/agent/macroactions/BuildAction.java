@@ -1,5 +1,8 @@
-package at.ac.tuwien.ifs.sge.agent;
+package at.ac.tuwien.ifs.sge.agent.macroactions;
 
+import at.ac.tuwien.ifs.sge.agent.Command;
+import at.ac.tuwien.ifs.sge.agent.ExecutableActionFactoryException;
+import at.ac.tuwien.ifs.sge.agent.GameStateNode;
 import at.ac.tuwien.ifs.sge.agent.macroactions.AbstractMacroAction;
 import at.ac.tuwien.ifs.sge.agent.macroactions.MacroAction;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
@@ -19,7 +22,7 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
     private final EmpireUnit empireUnitOnCity;
     private final int unitTypeId;
 
-    public BuildAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation, EmpireCity empireCity,EmpireUnit empireUnit, int unitTypeName) {
+    public BuildAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation, EmpireCity empireCity, EmpireUnit empireUnit, int unitTypeName) {
         super(gameStateNode, playerId, log, simulation);
         this.empireCityName = empireCity.toString();
         this.empireCity = empireCity;

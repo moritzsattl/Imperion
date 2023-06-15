@@ -1,6 +1,7 @@
 package at.ac.tuwien.ifs.sge.agent;
 
 import at.ac.tuwien.ifs.sge.agent.determinizedmap.DeterminizedEmpireGame;
+import at.ac.tuwien.ifs.sge.agent.macroactions.BuildAction;
 import at.ac.tuwien.ifs.sge.agent.macroactions.MacroAction;
 import at.ac.tuwien.ifs.sge.agent.macroactions.MacroActionType;
 import at.ac.tuwien.ifs.sge.agent.macroactions.MoveAction;
