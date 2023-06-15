@@ -54,9 +54,12 @@ class ImperionRealTimeGameNode<A> {
             }
 
 
-
             if(!knownOtherCities(playerId).isEmpty()) {
                 actions.add(MacroActionType.EXPANSION);
+            }
+
+            if(!enemiesInSight(playerId).isEmpty()){
+                actions.add(MacroActionType.EXPLORATION);
             }
 
             //TODO: add only macro actions if certain Empire events exist at the moment
@@ -66,6 +69,13 @@ class ImperionRealTimeGameNode<A> {
         }
 
         return getAllPossibleMacroActionsByPlayer;
+    }
+
+    private List<EmpireUnit> enemiesInSight(int playerId) {
+        var enemies = ((Empire) game).getUnitsByPlayer(playerId);
+
+
+        return enemies
     }
 
     public List<EmpireCity> knownOtherCities(int playerId) {
