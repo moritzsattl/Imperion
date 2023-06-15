@@ -1,10 +1,10 @@
-package at.ac.tuwien.ifs.sge.agent;
+package at.ac.tuwien.ifs.sge.agent.astar;
 
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 
 import java.util.Objects;
 
-class AStarNode implements Comparable<AStarNode> {
+public class AStarNode implements Comparable<AStarNode> {
 
     private Position position;
 

@@ -1,10 +1,13 @@
 package at.ac.tuwien.ifs.sge.agent;
 
+import at.ac.tuwien.ifs.sge.agent.determinizedmap.DeterminizedEmpireGame;
+import at.ac.tuwien.ifs.sge.agent.macroactions.MacroAction;
+import at.ac.tuwien.ifs.sge.agent.macroactions.MacroActionType;
+import at.ac.tuwien.ifs.sge.agent.macroactions.MoveAction;
 import at.ac.tuwien.ifs.sge.core.agent.AbstractRealTimeGameAgent;
 import at.ac.tuwien.ifs.sge.core.engine.communication.ActionResult;
 import at.ac.tuwien.ifs.sge.core.engine.communication.events.GameActionEvent;
 import at.ac.tuwien.ifs.sge.core.game.Game;
-import at.ac.tuwien.ifs.sge.core.game.GameUpdate;
 import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.core.util.Util;

@@ -1,5 +1,7 @@
 package at.ac.tuwien.ifs.sge.agent;
 
+import at.ac.tuwien.ifs.sge.agent.macroactions.MacroActionType;
+import at.ac.tuwien.ifs.sge.agent.macroactions.MoveAction;
 import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;

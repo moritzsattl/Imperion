@@ -1,5 +1,9 @@
 package at.ac.tuwien.ifs.sge.agent;
 
+import at.ac.tuwien.ifs.sge.agent.macroactions.ExpansionMacroAction;
+import at.ac.tuwien.ifs.sge.agent.macroactions.ExplorationMacroAction;
+import at.ac.tuwien.ifs.sge.agent.macroactions.MacroAction;
+import at.ac.tuwien.ifs.sge.agent.macroactions.MacroActionType;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 
 public class MacroActionFactory<A> {
