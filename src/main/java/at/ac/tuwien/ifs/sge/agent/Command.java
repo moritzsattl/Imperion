@@ -10,6 +10,7 @@ public class Command<A> {
 
     private Deque<EmpireEvent> actions;
 
+
     public Command(MacroAction<A> marcoAction, Deque<EmpireEvent> actions) {
         this.macroAction = marcoAction;
         this.actions = actions;

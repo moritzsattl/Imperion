@@ -12,10 +12,11 @@ import at.ac.tuwien.ifs.sge.core.util.tree.DoubleLinkedTree;
 import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
+import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.ProductionStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
-import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
+import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireProductionState;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
@@ -35,7 +36,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
     private static final double DEFAULT_EXPLOITATION_CONSTANT = Math.sqrt(2);
     private static final int DEFAULT_SIMULATION_PACE_MS = 1000;
     private static final int DEFAULT_SIMULATION_DEPTH = 20;
-    private static final int DEFAULT_DECISION_PACE_MS = 1000;
+    private static final int DEFAULT_DECISION_PACE_MS = 2500;
 
 
     private final Comparator<Tree<GameStateNode<A>>> selectionComparator;
@@ -44,6 +45,11 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
     private final Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues;
     private final Map<String,Deque<Command<A>>> cityCommandQueue;
+
+    private final Map<String, Integer> citiesToWhichUnitTypeProducing;
+
+    // TODO: Add simulatedCitiesToWhichUnitTypeProducing
+
     private final Map<EmpireUnit,Deque<Command<A>>> simulatedUnitCommandQueues;
     private final Map<String,Deque<Command<A>>> simulatedCityCommandQueues;
 
@@ -82,6 +88,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         this.simulatedUnitCommandQueues = new HashMap<>();
         this.cityCommandQueue = new HashMap<>();
         this.simulatedCityCommandQueues = new HashMap<>();
+        this.citiesToWhichUnitTypeProducing = new HashMap<>();
     }
 
     @Override
@@ -106,6 +113,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
     private void onActionRejection(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues, Object action) throws Exception {
         // Try to execute the old action, with new information about terrain
+        /*
         if(action instanceof MovementStartOrder){
             MovementStartOrder movementStartOrder = (MovementStartOrder) action;
             EmpireUnit unit = ((Empire) game).getUnit(movementStartOrder.getUnitId());
@@ -128,6 +136,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             }
 
         }
+         */
     }
 
     @Override
@@ -381,12 +390,20 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             }
         }
         if(macroAction instanceof BuildAction<A> buildAction){
-            if(cityCommandQueues.containsKey(buildAction.getCity())){
-                cityCommandQueues.get(buildAction.getCity()).add(command);
+            // If City is production type is unit type from build action and city is producing then don't add it to queue
+            if(((Empire) game).getCity(buildAction.getEmpireCity().getPosition()).getState() == EmpireProductionState.Producing){
+                if(citiesToWhichUnitTypeProducing.containsKey(buildAction.getCityStringName()) && buildAction.getUnitTypeId() == citiesToWhichUnitTypeProducing.get(buildAction.getCityStringName())){
+                    return;
+                }
+            }
+
+
+            if(cityCommandQueues.containsKey(buildAction.getCityStringName())){
+                cityCommandQueues.get(buildAction.getCityStringName()).add(command);
             }else{
                 Deque<Command<A>> queue = new ArrayDeque<>();
                 queue.add(command);
-                cityCommandQueues.put(buildAction.getCity(),queue);
+                cityCommandQueues.put(buildAction.getCityStringName(),queue);
             }
         }
 
@@ -491,9 +508,22 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 }
 
                 if(!game.getPossibleActions(playerId).contains(action)){
-                    //TODO: Calculate new path for MoveAction, if action is invalid for some reason,
 
-                    log.info("Action not possible, removing from command queue");
+                    // Calculate new path for MoveAction, if action is invalid for some reason, for example mountains in the way
+                    if(command.getMacroAction() instanceof MoveAction<A> moveAction){
+                        MovementStartOrder moveOrder = (MovementStartOrder) action;
+                        EmpireUnit unit = ((Empire) game).getUnit(moveOrder.getUnitId());
+                        GameStateNode<A> advancedGameState = new GameStateNode<>(game.copy(),null);
+
+                        MoveAction<A> nextMoveAction = new MoveAction<>(advancedGameState,unit,null,moveAction.getDestination(),playerId,log,false);
+                        overwriteFirstCommandInCommandQueue(unitCommandQueues,nextMoveAction);
+
+                        log.info(action + " not possible or unit was too slow to execute, recalculating the path");
+                    }else{
+                        log.info(action + " not possible, removing command " + command + " from queue queue");
+                    }
+
+
                 }else{
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
@@ -517,27 +547,33 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     continue;
                 }
 
-                A action = (A) command.getActions().peek();
+                A action = (A) command.getActions().poll();
 
                 if (action == null) {
                     continue;
                 }
 
+                // Casting should always be possible here
+                BuildAction<A> buildAction = (BuildAction<A>) command.getMacroAction();
+
                 if(!game.getPossibleActions(playerId).contains(action)){
                     // If production order not valid yet, wait for it to be valid, maybe something else is producing right now
-
                     log.info("Action not possible yet, add it back to command queue");
+                    command.getActions().addFirst((EmpireEvent) action);
                 }else{
+                    log.info(game.getPossibleActions(playerId));
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
 
-                    // Successfully send, now it can be remove from the queue
-                    command.getActions().poll();
-
-                    // If command is not empty, and it back to the queue
-                    if(!command.getActions().isEmpty()){
-                        queue.addFirst(command);
+                    // Change current unit type production
+                    if(action instanceof ProductionStartOrder productionOrder){
+                        citiesToWhichUnitTypeProducing.put(buildAction.getCityStringName(), productionOrder.getUnitTypeId());
                     }
+                }
+
+                // If command is not empty, and it back to the queue
+                if(!command.getActions().isEmpty()){
+                    queue.addFirst(command);
                 }
             }
             offset++;
@@ -679,6 +715,12 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                         log.info(command);
                     }
                 }
+
+                log._info_();
+                log.info("Cities To Unit Type Producing");
+                log.info(citiesToWhichUnitTypeProducing);
+                log._info_();
+
 
                 // Executes for each unit there next actions in their own unit action command queue
                 lastExecutedCommands = executeNextCommands();
