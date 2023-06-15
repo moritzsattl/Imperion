@@ -53,6 +53,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
     private final Map<EmpireUnit,Deque<Command<A>>> simulatedUnitCommandQueues;
     private final Map<String,Deque<Command<A>>> simulatedCityCommandQueues;
 
+    private int turnsPassed = 0;
+
 
 
     public Imperion(Class<G> gameClass, int playerId, String playerName, int logLevel) {
@@ -379,7 +381,9 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         } catch (ExecutableActionFactoryException e) {
             log.info(e);
             log.info(new ExecutableActionFactoryException("Command could not be build"));
+            return;
         }
+
         if(macroAction instanceof MoveAction<A> moveAction){
             if(unitCommandQueues.containsKey(moveAction.getUnit())){
                 unitCommandQueues.get(moveAction.getUnit()).add(command);
@@ -725,6 +729,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 // Executes for each unit there next actions in their own unit action command queue
                 lastExecutedCommands = executeNextCommands();
 
+                turnsPassed++;
             } catch (ActionException e) {
                 // Action weren't yet validated, try again
                 log.info(e);
