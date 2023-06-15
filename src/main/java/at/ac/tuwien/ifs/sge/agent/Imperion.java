@@ -34,7 +34,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
     }
 
     private static final double DEFAULT_EXPLOITATION_CONSTANT = Math.sqrt(2);
-    private static final int DEFAULT_SIMULATION_PACE_MS = 1000;
+    private static final int DEFAULT_SIMULATION_PACE_MS = 1250;
     private static final int DEFAULT_SIMULATION_DEPTH = 20;
     private static final int DEFAULT_DECISION_PACE_MS = 1250;
 
@@ -546,10 +546,9 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
 
                     //TODO: Add check if another ally is also going to the same tile, then take another path
-
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
-                    offset++;
+                    offset += 5;
                     log.info(offset);
 
                     // If command is not empty, and it back to the queue
@@ -626,7 +625,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     //log.info(game.getPossibleActions(playerId));
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
-                    offset++;
+                    offset += 5;
                     log.info(offset);
 
                     // Change current unit type production
@@ -737,18 +736,20 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             try {
                 log._info_();
                 log.info("-----------------------Next game turn-------------------------");
-
+                Thread.sleep(1000);
                 // Copy the game state and apply the last determined actions, since those actions were not yet accepted and sent back
                 // from the engine server at this point in time
                 var gameState = game.copy();
 
                 // Apply event
-                if(lastExecutedCommands != null){
-                    log.info("Scheduled events");
+                if(lastExecutedCommands != null && !lastExecutedCommands.isEmpty()){
+                    log.info("Last executed Actions");
+                    log.info(lastExecutedCommands);
+                    log.info("Actually Scheduled Actions");
                     int c = 1;
                     for (var action : lastExecutedCommands) {
-                        log.info(action);
                         if(action != null && gameState.isValidAction(action, playerId)){
+                            log.info(action);
                             gameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, gameState.getGameClock().getGameTimeMs() + c));
                             c++;
                         }
@@ -761,19 +762,14 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     gameState.advance(DEFAULT_DECISION_PACE_MS);
                 }catch(ActionException e){
                     log.info(e);
-                    //StringBuilder sb = new StringBuilder();
-                    //for (StackTraceElement element : e.getStackTrace()) {
-                    //    sb.append(element.toString());
-                    //    sb.append("\n");
-                    //}
-                    //String stackTrace = sb.toString();
-                    //log.info(stackTrace);
+                    StringBuilder sb = new StringBuilder();
+                    for (StackTraceElement element : e.getStackTrace()) {
+                        sb.append(element.toString());
+                        sb.append("\n");
+                    }
+                    String stackTrace = sb.toString();
+                    log.info(stackTrace);
                 }
-
-                //for (var possibleAction : gameState.getPossibleActions(playerId)) {
-                //    log.info(possibleAction);
-                //}
-
 
 
                 // Create a new tree with the game state as root
