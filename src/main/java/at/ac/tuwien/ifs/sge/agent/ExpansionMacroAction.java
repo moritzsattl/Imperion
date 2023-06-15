@@ -82,7 +82,7 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         // Step 2: Select units to remove
         for (Map.Entry<Position, List<EmpireUnit>> entry : positionToUnitsMap.entrySet()) {
             List<EmpireUnit> unitsAtPosition = entry.getValue();
-            if (game.getCity(entry.getKey()).getOccupants().size() > 1 && !alreadyCheckedPositions.contains(entry.getKey())) {
+            if (!alreadyCheckedPositions.contains(entry.getKey())) {
                 // select one unit to remove at random
                 EmpireUnit unitToRemove = null;
                 // Try to remove the infantry unit
@@ -108,7 +108,7 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
 
         // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
         notBusyUnits.addAll(notBusyUnitsOnCities);
-
+        log.info("Not busy units: " + notBusyUnits);
 
 
         ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
@@ -173,8 +173,6 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
                 return actions;
             }
         }
-
-        log.info("Not busy units: " + notBusyUnits);
 
 
         // TODO: Maybe force nearest ally to city for expansion, if all are units are busy

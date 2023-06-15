@@ -105,6 +105,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
     @Override
     protected void onActionRejected(Object action) {
+        log._info_();
+        log.info("Some actions were rejected");
         try {
             onActionRejection(unitCommandQueues,action);
         } catch (Exception e) {
@@ -121,7 +123,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         if(action instanceof MovementStartOrder){
             MovementStartOrder movementStartOrder = (MovementStartOrder) action;
             EmpireUnit unit = ((Empire) game).getUnit(movementStartOrder.getUnitId());
-            log.info(action + " for " + unit  + " failed");
+            log.info(action + " failed");
             Queue<Command<A>> unitCommandQueue = unitCommandQueues.get(unit);
             if(unitCommandQueue == null){
                 throw new Exception("unitCommandQueue for " + unit +  " was empty, action could not reinited");
@@ -131,9 +133,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             // If null then there are no more commands in queue
             if(commandWhichWasRejected != null){
                 // Try executing command again (only if movement to tile is possible)
+                log.info("Trying to execute command again:");
                 MacroAction<A> macroAction = commandWhichWasRejected.getMacroAction();
                 if(macroAction instanceof MoveAction<A> moveAction){
-                    log.info("Trying to execute command again: " + moveAction);
+                    log.info(moveAction);
                     GameStateNode<A> advancedGameState = new GameStateNode<>(game.copy(),null);
                     overwriteFirstCommandInCommandQueue(unitCommandQueues,new MoveAction<>(advancedGameState,unit, moveAction.getType(),moveAction.getDestination(),unit.getPlayerId(),log,false));
                 }
@@ -524,32 +527,36 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         for (var unit : unitCommandQueues.keySet()) {
             Deque<Command<A>> queue = unitCommandQueues.get(unit);
 
-            if (!queue.isEmpty()) {
-                Command<A> command = queue.poll();
+            if(turnsPassed % 2 == 0 || unit.getUnitTypeName().equals("Scout")){
+                if (!queue.isEmpty()) {
+                    Command<A> command = queue.poll();
 
-                if(command == null || command.getActions() == null || command.getActions().isEmpty()){
-                    continue;
-                }
+                    if(command == null || command.getActions() == null || command.getActions().isEmpty()){
+                        continue;
+                    }
 
-                A action = (A) command.getActions().poll();
+                    A action = (A) command.getActions().poll();
 
-                if (action == null) {
-                    continue;
-                }
+                    if (action == null) {
+                        continue;
+                    }
+
+                    //TODO: If some move in the path was found to be not possible calc path again;
+                    // If last position, was found to be not possible remove from command list;
 
 
-                //TODO: Add check if another ally is also going to a tile, then take another path
+                    //TODO: Add check if another ally is also going to the same tile, then take another path
 
-                executedCommands.add(action);
-                sendAction(action,System.currentTimeMillis() + offset);
+                    executedCommands.add(action);
+                    sendAction(action,System.currentTimeMillis() + offset);
 
-                // If command is not empty, and it back to the queue
-                if(!command.getActions().isEmpty()){
-                    queue.addFirst(command);
-                }else{
-                    // Add empty command back to queue, so unit stays busy until next turn, where the empty command will be removed
-                    queue.addFirst(new Command<>());
-                }
+                    // If command is not empty, and it back to the queue
+                    if(!command.getActions().isEmpty()){
+                        queue.addFirst(command);
+                    }else{
+                        // Add empty command back to queue, so unit stays busy until next turn, where the empty command will be removed
+                        queue.addFirst(new Command<>());
+                    }
 
 
 
@@ -585,6 +592,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 }
                  */
+                }
             }
             offset++;
         }
@@ -856,8 +864,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 // Executes for each unit there next actions in their own unit action command queue
                 lastExecutedCommands = executeNextCommands();
-
                 turnsPassed++;
+
             } catch (ActionException e) {
                 // Action weren't yet validated, try again
                 log.info(e);
