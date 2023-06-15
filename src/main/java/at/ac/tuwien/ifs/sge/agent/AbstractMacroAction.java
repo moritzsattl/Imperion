@@ -28,4 +28,6 @@ public abstract class AbstractMacroAction<A> implements MacroAction<A>{
         this.simulation = simulation;
     }
 
+
+
 }

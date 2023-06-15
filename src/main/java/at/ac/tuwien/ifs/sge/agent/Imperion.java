@@ -187,8 +187,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         Tree<GameStateNode<A>> expandedTree = null;
 
         // Determinized Game
-        var determinizedGame = determinize((Empire) gameState.getGame().copy());
-        gameState.setGame((RealTimeGame<A, ?>) determinizedGame);
+        //var determinizedGame = determinize((Empire) gameState.getGame().copy());
+        //gameState.setGame((RealTimeGame<A, ?>) determinizedGame);
 
         //log.info(((DeterminizedEmpireGame) gameState.getGame()).getDeterminizedMap());
 
@@ -341,7 +341,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
     private void executeMacroAction(MacroActionType actionType, int playerId, GameStateNode<A> gameState, boolean simulate) throws ActionException, NoSuchElementException {
         // For simplicity, don't allow simulation until everything works
         if(!simulate){
-            var determinizedGame = (DeterminizedEmpireGame) gameState.getGame();
+            //var determinizedGame = (DeterminizedEmpireGame) gameState.getGame();
 
             MacroAction<A> macroAction = new MacroActionFactory().createMacroAction(actionType, gameState, playerId, log, simulate);
 
@@ -366,10 +366,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 if(simulate){
                     addToCommandQueue(simulatedUnitCommandQueues, simulatedCityCommandQueues,action);
-                    Queue<A> simulatedActions = simulateNextCommands(determinizedGame,playerId);
+                    Queue<A> simulatedActions = simulateNextCommands(gameState,playerId);
                     // Repeat until all actions were simulated
                     while(simulatedActions.size() > 0){
-                        simulatedActions = simulateNextCommands(determinizedGame,playerId);
+                        simulatedActions = simulateNextCommands(gameState,playerId);
                     }
                 }else{
                     addToCommandQueue(unitCommandQueues, cityCommandQueue,action);
@@ -460,7 +460,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         }
     }
 
-    private Queue<A> simulateNextCommands(Empire game, int playerId) {
+    private Queue<A> simulateNextCommands(GameStateNode<A> gameStateNode, int playerId) {
+        Empire game = ((Empire)gameStateNode.getGame());
         Queue<A> simulatedCommands = new ArrayDeque<>();
         for (var unitId : simulatedUnitCommandQueues.keySet()) {
             Queue<Command<A>> queue = simulatedUnitCommandQueues.get(unitId);
@@ -488,11 +489,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     }
 
                     // Apply event
-                    List<GameUpdate<EmpireEvent>> updates = new ArrayList<>();
 
                     if (game.isValidAction(action,playerId)) {
                         GameActionEvent<EmpireEvent> actionEvent = new GameActionEvent<EmpireEvent>(playerId, action, game.getGameClock().getGameTimeMs() + 1);
-                        updates = game.applyActionEvent(actionEvent);
+                        game.scheduleActionEvent(actionEvent);
                     }
 
                     // Advancing the game
@@ -516,14 +516,14 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         return simulatedCommands;
     }
 
-    private Deque<A> executeNextCommands() {
+    private Deque<A> executeNextCommands(GameStateNode<A> gameStateNode) {
 
         //log.info("Executing next command from queue");
 
         Deque<A> executedCommands = new ArrayDeque<>();
 
         // Set an offset so the actions are not sent at the same time
-        int offset = 1;
+        int offset = 25;
         for (var unit : unitCommandQueues.keySet()) {
             Deque<Command<A>> queue = unitCommandQueues.get(unit);
 
@@ -549,6 +549,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
+                    offset++;
+                    log.info(offset);
 
                     // If command is not empty, and it back to the queue
                     if(!command.getActions().isEmpty()){
@@ -594,7 +596,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                  */
                 }
             }
-            offset++;
+
         }
 
         for (var city: cityCommandQueue.keySet()) {
@@ -616,7 +618,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 // Casting should always be possible here
                 BuildAction<A> buildAction = (BuildAction<A>) command.getMacroAction();
 
-                if(!game.getPossibleActions(playerId).contains(action)){
+                if(!gameStateNode.getGame().getPossibleActions(playerId).contains(action)){
                     // If production order not valid yet, wait for it to be valid, maybe something else is producing right now
                     log.info("Action not possible yet, add it back to command queue");
                     command.getActions().addFirst((EmpireEvent) action);
@@ -624,19 +626,21 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     //log.info(game.getPossibleActions(playerId));
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
+                    offset++;
+                    log.info(offset);
 
                     // Change current unit type production
                     if(action instanceof ProductionStartOrder productionOrder){
                         citiesToWhichUnitTypeProducing.put(buildAction.getCityStringName(), productionOrder.getUnitTypeId());
                     }
                 }
-
                 // If command is not empty, and it back to the queue
                 if(!command.getActions().isEmpty()){
                     queue.addFirst(command);
                 }
+
             }
-            offset++;
+
         }
 
         return executedCommands;
@@ -731,10 +735,8 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
         while (true) {
             try {
-                Thread.sleep(1000);
                 log._info_();
                 log.info("-----------------------Next game turn-------------------------");
-
 
                 // Copy the game state and apply the last determined actions, since those actions were not yet accepted and sent back
                 // from the engine server at this point in time
@@ -777,8 +779,6 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 // Create a new tree with the game state as root
                 var advancedGameState = new DoubleLinkedTree<>(new GameStateNode<>(gameState, null));
 
-
-
                 var iterations = 0;
                 var now = System.currentTimeMillis();
                 var timeOfNextDecision = now + DEFAULT_DECISION_PACE_MS;
@@ -789,6 +789,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     //lastDeterminedActionType = Util.selectRandom(actions);
                     //log.info(iterations);
                     // Select the best from the children according to the upper confidence bound
+                    /*
                     var tree = selection(advancedGameState);
 
                     //log.info("Selected Node: \n" + printTree(tree,"",0));
@@ -803,11 +804,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                     // Back propagate the wins of the agent
                     backPropagation(expandedTree, winners);
-
+                    */
 
                     iterations++;
                 }
-
 
 
                 //log.info("After MCTS: \n" + printTree(advancedGameState,"",0));
@@ -829,6 +829,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 }
 
                 lastDeterminedActionType = action;
+                lastDeterminedActionType = Util.selectRandom(advancedGameState.getNode().getAllPossibleMacroActionsByAllPlayer(unitCommandQueues).get(playerId));
 
 
                 if(lastDeterminedActionType != null){
@@ -863,7 +864,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 */
 
                 // Executes for each unit there next actions in their own unit action command queue
-                lastExecutedCommands = executeNextCommands();
+                lastExecutedCommands = executeNextCommands(advancedGameState.getNode());
                 turnsPassed++;
 
             } catch (ActionException e) {
