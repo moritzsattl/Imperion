@@ -500,8 +500,6 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         for (var unit : unitCommandQueues.keySet()) {
             Deque<Command<A>> queue = unitCommandQueues.get(unit);
 
-            if(unit)
-
             if (!queue.isEmpty()) {
                 Command<A> command = queue.poll();
 
@@ -520,7 +518,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     // Calculate new path for MoveAction, if action is invalid for some reason, for example mountains in the way
                     if(command.getMacroAction() instanceof MoveAction<A> moveAction){
                         MovementStartOrder moveOrder = (MovementStartOrder) action;
-                        EmpireUnit unit = ((Empire) game).getUnit(moveOrder.getUnitId());
+                        unit = ((Empire) game).getUnit(moveOrder.getUnitId());
                         GameStateNode<A> advancedGameState = new GameStateNode<>(game.copy(),null);
 
                         MoveAction<A> nextMoveAction = new MoveAction<>(advancedGameState,unit,null,moveAction.getDestination(),playerId,log,false);
