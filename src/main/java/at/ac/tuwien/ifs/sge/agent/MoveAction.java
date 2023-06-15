@@ -40,10 +40,15 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
         return null;
     }
 
+    public MacroActionType getType() {
+        return type;
+    }
+
     @Override
     public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         if(path == null){
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
+            //log.info("Calculated Path: ");
             AStarNode currentNode = aStar.findPath(simulation);
             if(currentNode == null) return null;
 
@@ -63,6 +68,8 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
         if(path.isEmpty()){
             throw new ExecutableActionFactoryException("Path to " + destination + " was not found by unit " + unit);
         }
+
+        //log.info(path);
 
         return path;
 

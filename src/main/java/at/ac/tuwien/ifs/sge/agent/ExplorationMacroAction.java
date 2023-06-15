@@ -32,9 +32,6 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
         HashSet<EmpireUnit> notBusyUnitsOnCities = new HashSet<>();
 
-        HashSet<EmpireUnit> notBusyUnitsOnCitiesWhichAreNotProducing = new HashSet<>();
-
-
         for (var unit: units) {
             var unitPosition = unit.getPosition();
             // Unit which are not busy
@@ -46,13 +43,6 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
                 }else{
                     // Units on city
                     notBusyUnitsOnCities.add(unit);
-
-
-                    // Cities with units on it, which are not producing
-                    if(game.getCity(unit.getPosition()).getState() == EmpireProductionState.Idle){
-                        // Unit has to be added instead of city, because build action need units as parameter
-                        notBusyUnitsOnCitiesWhichAreNotProducing.add(unit);
-                    }
                 }
             }
         }
@@ -63,6 +53,8 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         // one unit from cities should remain there, so it is actually busy and has to be removed from notBusyUnitsOnCities
         HashSet<Position> alreadyCheckedPositions = new HashSet<>();
         HashMap<Position, List<EmpireUnit>> positionToUnitsMap = new HashMap<>();
+
+        HashSet<EmpireUnit> busyForProductionUnitsOnCity = new HashSet<>();
         HashSet<EmpireUnit> unitsToRemove = new HashSet<>();
 
         // Step 1: Fill the map
@@ -77,8 +69,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         // Step 2: Select units to remove
         for (Map.Entry<Position, List<EmpireUnit>> entry : positionToUnitsMap.entrySet()) {
             List<EmpireUnit> unitsAtPosition = entry.getValue();
-            if (!alreadyCheckedPositions.contains(entry.getKey())) {
-                // select one unit to remove at random
+            if (game.getCity(entry.getKey()).getOccupants().size() > 1 && !alreadyCheckedPositions.contains(entry.getKey())) {
 
                 EmpireUnit unitToRemove = null;
                 // Try to remove the infantry unit
@@ -93,6 +84,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
                     unitToRemove = Util.selectRandom(unitsAtPosition);
                 }
 
+                busyForProductionUnitsOnCity.add(unitToRemove);
                 unitsToRemove.add(unitToRemove);
                 alreadyCheckedPositions.add(entry.getKey());
             }
@@ -105,6 +97,17 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         notBusyUnits.addAll(notBusyUnitsOnCities);
 
 
+        ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
+
+        for (var unit : busyForProductionUnitsOnCity) {
+            // Cities with units on it, which are not producing
+            if(game.getCity(unit.getPosition()).getState() == EmpireProductionState.Idle){
+                // Unit has to be added instead of city, because build action need units as parameter
+                busyForProductionUnitsOnCitiesWhichAreNotProducing.add(unit);
+            }
+        }
+
+
         // Select scout unit
         EmpireUnit selectedUnit = null;
 
@@ -112,6 +115,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         for (var unit : notBusyUnits) {
             // Select Scout
             if (unit.getUnitTypeName().equals("Scout")) {
+                // Add check if unit already
                 scouts.add(unit);
             }
         }
@@ -127,12 +131,12 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
             EmpireUnit unitOnCity = null;
             // Select a random non producing city with units on it and produce scout
-            if(!notBusyUnitsOnCitiesWhichAreNotProducing.isEmpty()) {
-                unitOnCity = Util.selectRandom(notBusyUnitsOnCitiesWhichAreNotProducing);
+            if(!busyForProductionUnitsOnCitiesWhichAreNotProducing.isEmpty()) {
+                unitOnCity = Util.selectRandom(busyForProductionUnitsOnCitiesWhichAreNotProducing);
             }else {
                 // In this case all cities are producing, so we just want to queue a build order for a random City
-                if(!notBusyUnitsOnCities.isEmpty()){
-                    unitOnCity = Util.selectRandom(notBusyUnitsOnCities);
+                if(!busyForProductionUnitsOnCity.isEmpty()){
+                    unitOnCity = Util.selectRandom(busyForProductionUnitsOnCity);
                 }
             }
 

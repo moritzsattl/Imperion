@@ -6,6 +6,8 @@ import java.util.Deque;
 import java.util.Queue;
 
 public class Command<A> {
+
+
     private MacroAction<A> macroAction;
 
     private Deque<EmpireEvent> actions;
@@ -14,6 +16,9 @@ public class Command<A> {
     public Command(MacroAction<A> marcoAction, Deque<EmpireEvent> actions) {
         this.macroAction = marcoAction;
         this.actions = actions;
+    }
+
+    public Command() {
     }
 
     public MacroAction<A> getMacroAction() {
