@@ -172,7 +172,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
                 while (!unknownPositions.isEmpty()){
                     var unknownPosition = unknownPositions.pop();
                     for (var knownPosition: knownPositions) {
-                        double dist = getEuclideanDistance(knownPosition, unknownPosition);
+                        double dist = Imperion.getEuclideanDistance(knownPosition, unknownPosition);
                         if (dist > maxDistance) {
                             maxDistance = dist;
                             destination = unknownPosition;
@@ -214,11 +214,6 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         actions.add(moveAction);
 
         return actions;
-    }
-
-    private double getEuclideanDistance(Position a, Position b) {
-        var diff = a.subtract(b);
-        return Math.sqrt(diff.getX() * diff.getX() + diff.getY() * diff.getY());
     }
 
 
@@ -294,10 +289,6 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         return events;
     }
 
-    @Override
-    public void simulate() throws ActionException {
-
-    }
 
     @Override
     public String toString() {

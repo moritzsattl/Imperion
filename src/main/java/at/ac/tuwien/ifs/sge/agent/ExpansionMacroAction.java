@@ -1,7 +1,6 @@
 package at.ac.tuwien.ifs.sge.agent;
 
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
-import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.core.util.Util;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
@@ -12,14 +11,11 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 import java.util.*;
 
 public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
-
-    private final List<EmpireUnit> units;
     private final List<EmpireCity> nonFriendlyCities;
     private Deque<EmpireEvent> path;
 
     public ExpansionMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation) {
         super(gameStateNode, playerId, log, simulation);
-        this.units = game.getUnitsByPlayer(playerId);
         this.nonFriendlyCities = gameStateNode.knownOtherCities(playerId);
     }
 
@@ -27,6 +23,25 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
     @Override
     public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit, Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<A>> actions = new LinkedList<>();
+        EmpireUnit selectedUnit = null;
+        EmpireCity selectedCity = null;
+
+        // Find City to Expand to
+        log.info("Not Friendly Cities: " +  nonFriendlyCities);
+
+        // Get empty cities
+        List<EmpireCity> emptyCities = new LinkedList<>();
+        for (var city: nonFriendlyCities) {
+            if (city.getOccupants().isEmpty()) {
+                emptyCities.add(city);
+            }
+        }
+
+        log.info("Empty Cities: " + emptyCities);
+
+        if (emptyCities.isEmpty()) {
+            throw new ExecutableActionFactoryException("No empty cities found.");
+        }
 
         // Units which are not busy (so no commands are scheduled or which are last unit on city tile)
         ArrayList<EmpireUnit> notBusyUnits = new ArrayList<>();
@@ -91,7 +106,6 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
 
 
 
-        EmpireUnit selectedUnit = null;
         List<EmpireUnit> infantries = new ArrayList<>();
         // Get all free Infantry units
         for (var unit : notBusyUnits) {
@@ -101,16 +115,16 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
             }
         }
 
-        // TODO: Maybe select the infantry unit which is closest to the city
         // If there is a free infantry unit, then select one
         if(!infantries.isEmpty()){
-            selectedUnit = Util.selectRandom(infantries);
+            Object[] selectedPair = findClosestPair(emptyCities, infantries);
+            selectedCity = (EmpireCity) selectedPair[0];
+            selectedUnit = (EmpireUnit) selectedPair[1];
         }
-
-        BuildAction<A> buildAction;
 
         // If there are no infantry units or all are infantry units are busy, then build one
         if(selectedUnit == null){
+            BuildAction<A> buildAction;
 
             EmpireUnit unitOnCity = null;
             // Select a random non producing city with units on it and produce infantry
@@ -129,9 +143,19 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
                 actions.add(buildAction);
             }
 
-            // TODO: Maybe select the infantry unit which is closest to the city
             // Select other unit for expansion instead of infantry for MoveAction
-            selectedUnit = Util.selectRandom(notBusyUnits);
+            Object[] selectedPair = findClosestPair(emptyCities, notBusyUnits);
+            selectedCity = (EmpireCity) selectedPair[0];
+            selectedUnit = (EmpireUnit) selectedPair[1];
+
+            // If no units are free and buildAction could not be scheduled, throw exception
+            if(selectedUnit == null){
+                if(actions.isEmpty()){
+                    throw new ExecutableActionFactoryException("All units busy or last on city tile, just ordered build action");
+                }
+                // If there are no units, which are free (not last unit on a city tile) just order buildAction
+                return actions;
+            }
         }
 
         log.info("Not busy units: " + notBusyUnits);
@@ -139,39 +163,27 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
 
         // TODO: Maybe force nearest ally to city for expansion, if all are units are busy
 
-        // If no units are free and buildAction could not be scheduled, throw exception
-        if(selectedUnit == null){
-            if(actions.isEmpty()){
-                throw new ExecutableActionFactoryException("All units busy or last on city tile, just ordered build action");
-            }
-            // If there are no units, which are free (not last unit on a city tile) just order buildAction
-            return actions;
-        }
 
-
-        log.info("Not Friendly Cities: " +  nonFriendlyCities);
-
-        // Get empty cities
-        List<EmpireCity> emptyCities = new LinkedList<>();
-        for (var city: nonFriendlyCities) {
-            if (city.getOccupants().isEmpty()) {
-                emptyCities.add(city);
-            }
-        }
-
-        log.info("Empty Cities: " + emptyCities);
-
-        if (emptyCities.isEmpty()) {
-            throw new ExecutableActionFactoryException("No empty cities found.");
-        }
-
-        // Select random city for expansion order
-        Position destination = Util.selectRandom(emptyCities).getPosition();
-
-        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPANSION, destination, playerId, log, simulation);
+        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPANSION, selectedCity.getPosition(), playerId, log, simulation);
         actions.add(moveAction);
 
         return actions;
+    }
+
+    private Object[] findClosestPair(List<EmpireCity> cities, List<EmpireUnit> units) {
+        Object[] result = {null, null};
+        double closest = Double.MAX_VALUE;
+        for (var city: cities) {
+            for (var unit: units) {
+                double temp = Imperion.getEuclideanDistance(city.getPosition(), unit.getPosition());
+                if (temp < closest) {
+                    result[0] = city;
+                    result[1] = unit;
+                }
+            }
+        }
+
+        return result;
     }
 
     @Override
@@ -191,8 +203,4 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         return events;
     }
 
-    @Override
-    public void simulate() throws ActionException {
-
-    }
 }
