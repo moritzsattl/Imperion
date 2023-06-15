@@ -1,5 +1,6 @@
-package at.ac.tuwien.ifs.sge.agent;
+package at.ac.tuwien.ifs.sge.agent.macroactions;
 
+import at.ac.tuwien.ifs.sge.agent.GameStateNode;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;

@@ -1,4 +1,5 @@
 package at.ac.tuwien.ifs.sge.agent;
+import at.ac.tuwien.ifs.sge.agent.macroactions.MacroActionType;
 import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 
@@ -6,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-class GameStateNode<A> extends ImperionRealTimeGameNode<A> {
+public class GameStateNode<A> extends ImperionRealTimeGameNode<A> {
 
     private int[] winsForPlayer;
     private int visits = 0;
