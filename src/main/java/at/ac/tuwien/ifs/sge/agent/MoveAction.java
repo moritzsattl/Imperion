@@ -15,6 +15,8 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
     private final Position destination;
     private final MacroActionType type;
 
+    private final boolean force;
+
 
     private Deque<EmpireEvent> path;
 
@@ -26,12 +28,13 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
         return destination;
     }
 
-    public MoveAction(GameStateNode<A> gameStateNode, EmpireUnit unit, MacroActionType type, Position destination, int playerId, Logger log, boolean simulation) {
+    public MoveAction(GameStateNode<A> gameStateNode, EmpireUnit unit, MacroActionType type, Position destination, int playerId, Logger log, boolean simulation, boolean force) {
         super(gameStateNode, playerId, log, simulation);
         this.unit = unit;
         this.type = type;
         this.destination = destination;
         this.log = log;
+        this.force = force;
     }
 
 
@@ -42,6 +45,10 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
 
     public MacroActionType getType() {
         return type;
+    }
+
+    public boolean isForce() {
+        return force;
     }
 
     @Override
