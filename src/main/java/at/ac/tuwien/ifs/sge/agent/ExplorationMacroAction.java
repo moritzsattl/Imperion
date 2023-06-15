@@ -225,7 +225,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
             throw new ExecutableActionFactoryException();
         }
 
-        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination,playerId, log, simulation);
+        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination,playerId, log, simulation,false);
         actions.add(moveAction);
 
         return actions;

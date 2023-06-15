@@ -138,7 +138,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                 if(macroAction instanceof MoveAction<A> moveAction){
                     log.info(moveAction);
                     GameStateNode<A> advancedGameState = new GameStateNode<>(game.copy(),null);
-                    overwriteFirstCommandInCommandQueue(unitCommandQueues,new MoveAction<>(advancedGameState,unit, moveAction.getType(),moveAction.getDestination(),unit.getPlayerId(),log,false));
+                    overwriteFirstCommandInCommandQueue(unitCommandQueues,new MoveAction<>(advancedGameState,unit, moveAction.getType(),moveAction.getDestination(),unit.getPlayerId(),log,false,false));
                 }
             }
 
@@ -392,12 +392,17 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
 
         if(macroAction instanceof MoveAction<A> moveAction){
-            if(unitCommandQueues.containsKey(moveAction.getUnit())){
-                unitCommandQueues.get(moveAction.getUnit()).add(command);
+            // Force move action is necessary
+            if(moveAction.isForce()){
+                overwriteFirstCommandInCommandQueue(unitCommandQueues,moveAction);
             }else{
-                Deque<Command<A>> queue = new ArrayDeque<>();
-                queue.add(command);
-                unitCommandQueues.put(moveAction.getUnit(),queue);
+                if(unitCommandQueues.containsKey(moveAction.getUnit())){
+                    unitCommandQueues.get(moveAction.getUnit()).add(command);
+                }else{
+                    Deque<Command<A>> queue = new ArrayDeque<>();
+                    queue.add(command);
+                    unitCommandQueues.put(moveAction.getUnit(),queue);
+                }
             }
         }
         if(macroAction instanceof BuildAction<A> buildAction){
@@ -548,8 +553,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     //TODO: Add check if another ally is also going to the same tile, then take another path
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
-                    offset += 5;
-                    log.info(offset);
+                    offset += 1;
 
                     // If command is not empty, and it back to the queue
                     if(!command.getActions().isEmpty()){
@@ -625,8 +629,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     //log.info(game.getPossibleActions(playerId));
                     executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
-                    offset += 5;
-                    log.info(offset);
+                    offset += 1;
 
                     // Change current unit type production
                     if(action instanceof ProductionStartOrder productionOrder){
@@ -743,13 +746,13 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 // Apply event
                 if(lastExecutedCommands != null && !lastExecutedCommands.isEmpty()){
-                    log.info("Last executed Actions");
-                    log.info(lastExecutedCommands);
-                    log.info("Actually Scheduled Actions");
+                    //log.info("Last executed Actions");
+                    //log.info(lastExecutedCommands);
+                    //log.info("Actually Scheduled Actions");
                     int c = 1;
                     for (var action : lastExecutedCommands) {
                         if(action != null && gameState.isValidAction(action, playerId)){
-                            log.info(action);
+                            //log.info(action);
                             gameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, gameState.getGameClock().getGameTimeMs() + c));
                             c++;
                         }
@@ -810,7 +813,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 MacroActionType action = null;
                 if (advancedGameState.isLeaf()) {
-                    log.info("Could not find a move! Doing nothing...");
+                    //log.info("Could not find a move! Doing nothing...");
                 } else {
                     // Select the most visited node from the root node and send it to the engine server
                     log._info_();
@@ -826,7 +829,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
                 lastDeterminedActionType = action;
                 lastDeterminedActionType = Util.selectRandom(advancedGameState.getNode().getAllPossibleMacroActionsByAllPlayer(unitCommandQueues).get(playerId));
-
+                log.info("Determined next action: " + lastDeterminedActionType);
 
                 if(lastDeterminedActionType != null){
                     try{
@@ -835,7 +838,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                         log.info("[ERROR] while excuting action");
                     }
                 }
-                /*
+
                 for (var unit : unitCommandQueues.keySet()) {
                     log._info_();
                     log.info("Commands in queue for " + unit.getId());
@@ -844,20 +847,20 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     }
                 }
 
-                for (var city :
-                        cityCommandQueue.keySet()) {
-                    log._info_();
-                    log.info("Commands in queue for " + city);
-                    for (Command<A> command: cityCommandQueue.get(city)) {
-                        log.info(command);
-                    }
-                }
+                //for (var city :
+                //        cityCommandQueue.keySet()) {
+                //    log._info_();
+                //    log.info("Commands in queue for " + city);
+                //    for (Command<A> command: cityCommandQueue.get(city)) {
+                //        log.info(command);
+                //    }
+                //}
 
                 log._info_();
                 log.info("Cities To Unit Type Producing");
                 log.info(citiesToWhichUnitTypeProducing);
                 log._info_();
-                */
+
 
                 // Executes for each unit there next actions in their own unit action command queue
                 lastExecutedCommands = executeNextCommands(advancedGameState.getNode());

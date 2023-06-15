@@ -58,8 +58,9 @@ class ImperionRealTimeGameNode<A> {
                 actions.add(MacroActionType.EXPANSION);
             }
 
+
             if(!enemiesInSight(playerId).isEmpty()){
-                actions.add(MacroActionType.EXPLORATION);
+                actions.add(MacroActionType.ATTACK);
             }
 
             //TODO: add only macro actions if certain Empire events exist at the moment
@@ -72,10 +73,14 @@ class ImperionRealTimeGameNode<A> {
     }
 
     private List<EmpireUnit> enemiesInSight(int playerId) {
-        var enemies = ((Empire) game).getUnitsByPlayer(playerId);
+        List<EmpireUnit> enemies = new ArrayList<>();
+        for (int otherPlayerId = 0; otherPlayerId < game.getNumberOfPlayers(); otherPlayerId++) {
+            if(otherPlayerId != playerId){
+                enemies.addAll(((Empire) game).getUnitsByPlayer(otherPlayerId));
+            }
+        }
 
-
-        return enemies
+        return enemies;
     }
 
     public List<EmpireCity> knownOtherCities(int playerId) {

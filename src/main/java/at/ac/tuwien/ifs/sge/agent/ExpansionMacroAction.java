@@ -13,13 +13,10 @@ import java.util.*;
 public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
     private final static List<EmpireCity> citiesAlreadyVisiting = new ArrayList<>();
     private final List<EmpireCity> nonFriendlyCities;
-    private Deque<EmpireEvent> path;
-    private final boolean force;
 
-    public ExpansionMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation, boolean force) {
+    public ExpansionMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation) {
         super(gameStateNode, playerId, log, simulation);
         this.nonFriendlyCities = gameStateNode.knownOtherCities(playerId);
-        this.force = force;
     }
 
 
@@ -70,7 +67,6 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         // one unit from cities should remain there, so it is actually busy and has to be removed from notBusyUnitsOnCities
         HashSet<Position> alreadyCheckedPositions = new HashSet<>();
         HashMap<Position, List<EmpireUnit>> positionToUnitsMap = new HashMap<>();
-        HashSet<EmpireUnit> unitsToRemove = new HashSet<>();
         HashSet<EmpireUnit> busyForProductionUnitsOnCity = new HashSet<>();
 
         // Step 1: Fill the map
@@ -86,7 +82,7 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         for (Map.Entry<Position, List<EmpireUnit>> entry : positionToUnitsMap.entrySet()) {
             List<EmpireUnit> unitsAtPosition = entry.getValue();
             if (!alreadyCheckedPositions.contains(entry.getKey())) {
-                // select one unit to remove at random
+
                 EmpireUnit unitToRemove = null;
                 // Try to remove the infantry unit
                 for (var unit : unitsAtPosition) {
@@ -101,13 +97,12 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
                 }
 
                 busyForProductionUnitsOnCity.add(unitToRemove);
-                unitsToRemove.add(unitToRemove);
                 alreadyCheckedPositions.add(entry.getKey());
             }
         }
 
         // Step 3: Remove the selected units
-        notBusyUnitsOnCities.removeAll(unitsToRemove);
+        notBusyUnitsOnCities.removeAll(busyForProductionUnitsOnCity);
 
         // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
         notBusyUnits.addAll(notBusyUnitsOnCities);
@@ -123,30 +118,18 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
             }
         }
 
+        List<EmpireUnit> allUnitsExceptThoseLastOnCity = new ArrayList<>();
 
-        List<EmpireUnit> serialize;
-        if (force) {
-            serialize = new ArrayList<>(units);
-            serialize.removeAll(busyForProductionUnitsOnCity);
-        } else {
-            serialize = notBusyUnits;
-        }
-        List<EmpireUnit> infantries = new ArrayList<>();
-        // Get all free Infantry units
-        for (var unit : serialize ) {
-            // Select Infantry
-            if (unit.getUnitTypeName().equals("Infantry")) {
-                infantries.add(unit);
+        // Force nearest unit to city, to expand (except units which are on cities)
+        for (var unit : this.units) {
+            if (!busyForProductionUnitsOnCity.contains(unit)) {
+                allUnitsExceptThoseLastOnCity.add(unit);
             }
         }
 
-        //TODO: Force Unit to expand to with
-
-        //TODO: Only go to city, if none other units already go there for expansion
-
-        // If there is a free infantry unit, then select one
-        if(!infantries.isEmpty()){
-            Object[] selectedPair = findClosestPair(emptyCities, infantries);
+        // If there is a unit, then select one
+        if(!allUnitsExceptThoseLastOnCity.isEmpty()){
+            Object[] selectedPair = findClosestPair(emptyCities, allUnitsExceptThoseLastOnCity);
             selectedCity = (EmpireCity) selectedPair[0];
             selectedUnit = (EmpireUnit) selectedPair[1];
         }
@@ -172,15 +155,10 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
                 actions.add(buildAction);
             }
 
-            // Select other unit for expansion instead of infantry for MoveAction
-            Object[] selectedPair = findClosestPair(emptyCities, notBusyUnits);
-            selectedCity = (EmpireCity) selectedPair[0];
-            selectedUnit = (EmpireUnit) selectedPair[1];
-
             // If no units are free and buildAction could not be scheduled, throw exception
             if(selectedUnit == null){
                 if(actions.isEmpty()){
-                    throw new ExecutableActionFactoryException("All units busy or last on city tile, just ordered build action");
+                    throw new ExecutableActionFactoryException("All units busy or last on city tile, can't even order build action");
                 }
                 // If there are no units, which are free (not last unit on a city tile) just order buildAction
                 return actions;
@@ -188,13 +166,10 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         }
 
 
-        // TODO: Maybe force nearest ally to city for expansion, if all are units are busy
-
-
-        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPANSION, selectedCity.getPosition(), playerId, log, simulation);
+        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPANSION, selectedCity.getPosition(), playerId, log, simulation, true);
         actions.add(moveAction);
-
         citiesAlreadyVisiting.add(selectedCity);
+
         return actions;
     }
 
