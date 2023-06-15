@@ -1,5 +1,7 @@
-package at.ac.tuwien.ifs.sge.agent;
+package at.ac.tuwien.ifs.sge.agent.macroactions;
 
+import at.ac.tuwien.ifs.sge.agent.Command;
+import at.ac.tuwien.ifs.sge.agent.ExecutableActionFactoryException;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 

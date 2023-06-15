@@ -1,5 +1,7 @@
 package at.ac.tuwien.ifs.sge.agent;
 
+import at.ac.tuwien.ifs.sge.agent.macroactions.AbstractMacroAction;
+import at.ac.tuwien.ifs.sge.agent.macroactions.MacroAction;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.ProductionStartOrder;
