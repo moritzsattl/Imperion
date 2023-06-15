@@ -186,7 +186,7 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         return actions;
     }
 
-    private Object[] findClosestPair(List<EmpireCity> cities, List<EmpireUnit> units) {
+    private static Object[] findClosestPair(List<EmpireCity> cities, List<EmpireUnit> units) {
         Object[] result = {null, null};
         double closest = Double.MAX_VALUE;
         for (var city: cities) {
