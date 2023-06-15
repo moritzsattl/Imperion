@@ -1,4 +1,4 @@
-package at.ac.tuwien.ifs.sge.agent;
+package at.ac.tuwien.ifs.sge.agent.macroactions;
 
 public enum MacroActionType {
     EXPLORATION("EXPLORATION"),

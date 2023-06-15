@@ -1,4 +1,4 @@
-package at.ac.tuwien.ifs.sge.agent;
+package at.ac.tuwien.ifs.sge.agent.determinizedmap;
 
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;

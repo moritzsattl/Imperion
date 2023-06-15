@@ -1,5 +1,7 @@
-package at.ac.tuwien.ifs.sge.agent;
+package at.ac.tuwien.ifs.sge.agent.determinizedmap;
 
+import at.ac.tuwien.ifs.sge.agent.Imperion;
+import at.ac.tuwien.ifs.sge.agent.LastSeenInfo;
 import at.ac.tuwien.ifs.sge.core.util.Util;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
