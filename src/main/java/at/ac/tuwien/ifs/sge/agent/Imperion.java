@@ -419,7 +419,9 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         try {
             command = new Command<>(macroAction, macroAction.getResponsibleActions(unitCommandQueues));
         } catch (ExecutableActionFactoryException e) {
+            log.info(e);
             log.info(new ExecutableActionFactoryException("Command could not be build"));
+            return;
         }
 
         if(macroAction instanceof MoveAction<A> moveAction){
@@ -495,8 +497,10 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
 
         // Set an offset so the actions are not sent at the same time
         int offset = 40;
-        for (var unitId : unitCommandQueues.keySet()) {
-            Deque<Command<A>> queue = unitCommandQueues.get(unitId);
+        for (var unit : unitCommandQueues.keySet()) {
+            Deque<Command<A>> queue = unitCommandQueues.get(unit);
+
+            if(unit)
 
             if (!queue.isEmpty()) {
                 Command<A> command = queue.poll();

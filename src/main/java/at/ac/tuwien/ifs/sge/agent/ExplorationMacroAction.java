@@ -171,8 +171,6 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
             }
         }
 
-
-
         double FAR_EXPLORATION_CONSTANT = 0.6;
         Random rand = new Random();
 
