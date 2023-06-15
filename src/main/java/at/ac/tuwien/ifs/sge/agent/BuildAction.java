@@ -1,7 +1,6 @@
 package at.ac.tuwien.ifs.sge.agent;
 
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
-import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.ProductionStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
@@ -55,10 +54,7 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
         return buildActions;
     }
 
-    @Override
-    public void simulate() throws ActionException {
 
-    }
 
     @Override
     public String toString() {

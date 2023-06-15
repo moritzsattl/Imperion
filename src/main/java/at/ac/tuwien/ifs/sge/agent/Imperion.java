@@ -36,7 +36,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
     private static final double DEFAULT_EXPLOITATION_CONSTANT = Math.sqrt(2);
     private static final int DEFAULT_SIMULATION_PACE_MS = 1000;
     private static final int DEFAULT_SIMULATION_DEPTH = 20;
-    private static final int DEFAULT_DECISION_PACE_MS = 2500;
+    private static final int DEFAULT_DECISION_PACE_MS = 1000;
 
 
     private final Comparator<Tree<GameStateNode<A>>> selectionComparator;
@@ -124,7 +124,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
             if(unitCommandQueue == null){
                 throw new Exception("unitCommandQueue for " + unit +  " was empty, action could not reinited");
             }
-            Command commandWhichWasRejected = unitCommandQueue.peek();
+            Command<A> commandWhichWasRejected = unitCommandQueue.peek();
 
             // If null then there are no more commands in queue
             if(commandWhichWasRejected != null){
@@ -702,8 +702,7 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
                     }
                 }
 
-                for (var unit :
-                        unitCommandQueues.keySet()) {
+                for (var unit : unitCommandQueues.keySet()) {
                     log._info_();
                     log.info("Commands in queue for " + unit.getId());
                     for (Command<A> command: unitCommandQueues.get(unit)) {
@@ -794,6 +793,11 @@ public class Imperion<G extends RealTimeGame<A, ?>, A> extends AbstractRealTimeG
         }
 
         return validLocations;
+    }
+
+    public static double getEuclideanDistance(Position a, Position b) {
+        var diff = a.subtract(b);
+        return Math.sqrt(diff.getX() * diff.getX() + diff.getY() * diff.getY());
     }
 
 }
