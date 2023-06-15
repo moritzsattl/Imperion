@@ -127,7 +127,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         // Step 2: Select units to remove
         for (Map.Entry<Position, List<EmpireUnit>> entry : positionToUnitsMap.entrySet()) {
             List<EmpireUnit> unitsAtPosition = entry.getValue();
-            if (game.getCity(entry.getKey()).getOccupants().size() > 1 && !alreadyCheckedPositions.contains(entry.getKey())) {
+            if (!alreadyCheckedPositions.contains(entry.getKey())) {
 
                 EmpireUnit unitToRemove = null;
                 // Try to remove the infantry unit
@@ -153,6 +153,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
         // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
         notBusyUnits.addAll(notBusyUnitsOnCities);
+        log.info("Not busy units: " + notBusyUnits);
 
 
         ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
@@ -209,8 +210,6 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
             // Select other unit for scouting instead of scout for MoveAction
             selectedUnit = findClosestUnit(destination, notBusyUnits);
         }
-
-        log.info("Not busy units: " + notBusyUnits);
 
         // If no units are free and all cities are producing throw exception
         if(selectedUnit == null){
