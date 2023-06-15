@@ -8,10 +8,10 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 import java.util.Deque;
 import java.util.Map;
 
-public interface MacroAction<A>{
+public interface MacroAction<EmpireEvent>{
 
-    Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException;
+    Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException;
 
-    Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException;
+    Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException;
 
 }

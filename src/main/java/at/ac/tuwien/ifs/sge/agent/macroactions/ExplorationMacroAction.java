@@ -13,19 +13,19 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.*;
 
-public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
+public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent>{
 
     private final List<EmpireUnit> units;
     private final List<Position> destinations;
 
-    public ExplorationMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation) {
+    public ExplorationMacroAction(GameStateNode<EmpireEvent> gameStateNode, int playerId, Logger log, boolean simulation) {
         super(gameStateNode, playerId ,log, simulation);
         this.units = game.getUnitsByPlayer(playerId);
         this.destinations = null;
     }
 
-    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException {
-        Deque<MacroAction<A>> actions = new LinkedList<>();
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
+        Deque<MacroAction<EmpireEvent>> actions = new LinkedList<>();
 
         Set<Position> knownPositions = getKnownPositions(game.getUnitsByPlayer(playerId).get(0).getPosition());
 
@@ -187,7 +187,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
         // If no scout unit available or all are busy is here, build one
         if(selectedUnit == null){
-            BuildAction<A> buildAction;
+            BuildAction<EmpireEvent> buildAction;
 
             EmpireUnit unitOnCity = null;
             // Select a random non producing city with units on it and produce scout
@@ -225,7 +225,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
             throw new ExecutableActionFactoryException();
         }
 
-        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination,playerId, log, simulation,false);
+        MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination,playerId, log, simulation,false);
         actions.add(moveAction);
 
         return actions;
@@ -299,13 +299,13 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
 
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
-        Deque<MacroAction<A>> executable = generateExecutableAction(unitsCommandQueues);
+    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+        Deque<MacroAction<EmpireEvent>> executable = generateExecutableAction(unitsCommandQueues);
 
         Deque<EmpireEvent> events = new LinkedList<>();
         if (executable != null) {
             while (!executable.isEmpty()){
-                MacroAction<A> action = executable.poll();
+                MacroAction<EmpireEvent> action = executable.poll();
                 Deque<EmpireEvent> empireEvents =  action.getResponsibleActions(unitsCommandQueues);
                 while (!empireEvents.isEmpty()) {
                     events.add(empireEvents.poll());

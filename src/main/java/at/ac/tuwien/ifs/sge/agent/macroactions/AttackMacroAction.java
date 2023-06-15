@@ -13,15 +13,15 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.*;
 
-public class AttackMacroAction<A> extends AbstractMacroAction<A>{
+public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent>{
 
-    public AttackMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation) {
+    public AttackMacroAction(GameStateNode<EmpireEvent> gameStateNode, int playerId, Logger log, boolean simulation) {
         super(gameStateNode, playerId, log, simulation);
     }
 
     @Override
-    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit, Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
-        Deque<MacroAction<A>> actions = new LinkedList<>();
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+        Deque<MacroAction<EmpireEvent>> actions = new LinkedList<>();
 
         HashSet<EmpireUnit> enemyUnits = new HashSet<>();
         // Get all enemy Units
@@ -116,7 +116,7 @@ public class AttackMacroAction<A> extends AbstractMacroAction<A>{
 
         // Produce on every city
         for (var unit: busyForProductionUnitsOnCity) {
-            BuildAction<A> buildAction = new BuildAction<>(gameStateNode,playerId,log,false,game.getCity(unit.getPosition()),unit,3);
+            BuildAction<EmpireEvent> buildAction = new BuildAction<>(gameStateNode,playerId,log,false,game.getCity(unit.getPosition()),unit,3);
             actions.add(buildAction);
         }
 
@@ -130,7 +130,7 @@ public class AttackMacroAction<A> extends AbstractMacroAction<A>{
     }
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit, Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
         return null;
     }
 }

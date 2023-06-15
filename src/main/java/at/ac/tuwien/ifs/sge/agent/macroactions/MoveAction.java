@@ -13,7 +13,7 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.*;
 
-public class MoveAction<A> extends AbstractMacroAction<A>{
+public class MoveAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent>{
 
     private final EmpireUnit unit;
     private final Position destination;
@@ -32,7 +32,7 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
         return destination;
     }
 
-    public MoveAction(GameStateNode<A> gameStateNode, EmpireUnit unit, MacroActionType type, Position destination, int playerId, Logger log, boolean simulation, boolean force) {
+    public MoveAction(GameStateNode<EmpireEvent> gameStateNode, EmpireUnit unit, MacroActionType type, Position destination, int playerId, Logger log, boolean simulation, boolean force) {
         super(gameStateNode, playerId, log, simulation);
         this.unit = unit;
         this.type = type;
@@ -43,7 +43,7 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
 
 
     @Override
-    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit, Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         return null;
     }
 
@@ -56,7 +56,7 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
     }
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         if(path == null){
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
             //log.info("Calculated Path: ");
@@ -66,7 +66,7 @@ public class MoveAction<A> extends AbstractMacroAction<A>{
             path = new ArrayDeque<>();
 
             while (currentNode != null) {
-                path.addFirst(new MovementStartOrder(unit.getId(),currentNode.getPosition()));
+                path.addFirst((EmpireEvent) new MovementStartOrder(unit.getId(),currentNode.getPosition()));
 
                 // Next Position to move to
                 currentNode = currentNode.getPrev();
