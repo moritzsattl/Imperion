@@ -79,7 +79,20 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
             List<EmpireUnit> unitsAtPosition = entry.getValue();
             if (!alreadyCheckedPositions.contains(entry.getKey())) {
                 // select one unit to remove at random
-                EmpireUnit unitToRemove = Util.selectRandom(unitsAtPosition);
+
+                EmpireUnit unitToRemove = null;
+                // Try to remove the infantry unit
+                for (var unit : unitsAtPosition) {
+                    if(unit.getUnitTypeName().equals("Infantry")){
+                        unitToRemove = unit;
+                    }
+                }
+
+                // If no Infantry unit there, select other unit
+                if(unitToRemove == null){
+                    unitToRemove = Util.selectRandom(unitsAtPosition);
+                }
+
                 unitsToRemove.add(unitToRemove);
                 alreadyCheckedPositions.add(entry.getKey());
             }
