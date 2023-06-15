@@ -4,9 +4,7 @@ import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.ProductionStartOrder;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.stop.ProductionStopOrder;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
-import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireProductionState;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.Deque;
@@ -18,27 +16,27 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
     private final String empireCityName;
     private final EmpireCity empireCity;
     private final EmpireUnit empireUnitOnCity;
-    private final int unitTypeName;
+    private final int unitTypeId;
 
     public BuildAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation, EmpireCity empireCity,EmpireUnit empireUnit, int unitTypeName) {
         super(gameStateNode, playerId, log, simulation);
         this.empireCityName = empireCity.toString();
         this.empireCity = empireCity;
-        this.unitTypeName = unitTypeName;
+        this.unitTypeId = unitTypeName;
         this.empireUnitOnCity = empireUnit;
     }
 
-    public String getCity() {
+    public String getCityStringName() {
         // EmpireCity has no ID, its String representation is used;
         return "City " + empireCity.getPosition();
     }
 
-    public EmpireUnit getEmpireUnitOnCityPosition() {
-        return empireUnitOnCity;
+    public EmpireCity getEmpireCity() {
+        return empireCity;
     }
 
-    public int getUnitTypeName() {
-        return unitTypeName;
+    public int getUnitTypeId() {
+        return unitTypeId;
     }
 
     @Override
@@ -51,7 +49,7 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
 
         Deque<EmpireEvent> buildActions = new LinkedList<>();
 
-        buildActions.add(new ProductionStartOrder(empireCity.getPosition(),unitTypeName));
+        buildActions.add(new ProductionStartOrder(empireCity.getPosition(), unitTypeId));
 
 
         return buildActions;
@@ -66,7 +64,7 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
     public String toString() {
         return "BuildAction{" +
                 "empireCity=" + empireCity +
-                ", unitTypeName=" + unitTypeName +
+                ", unitTypeName=" + unitTypeId +
                 '}';
     }
 }

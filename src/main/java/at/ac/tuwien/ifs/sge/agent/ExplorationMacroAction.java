@@ -139,7 +139,7 @@ public class ExplorationMacroAction<A> extends AbstractMacroAction<A>{
         // If no units are free and all cities are producing throw exception
         if(selectedUnit == null){
             if(actions.isEmpty()){
-                throw new ExecutableActionFactoryException("All units busy or last on city tile, just ordered build action");
+                throw new ExecutableActionFactoryException("All units busy or last on city tile, even Build Action was not possible");
             }
             // If there are no units, which are free (not last unit on a city tile) just order buildAction
             return actions;
