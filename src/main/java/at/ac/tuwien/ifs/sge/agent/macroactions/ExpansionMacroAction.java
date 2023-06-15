@@ -11,19 +11,19 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.*;
 
-public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
+public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent> {
     private final static List<EmpireCity> citiesAlreadyVisiting = new ArrayList<>();
     private final List<EmpireCity> nonFriendlyCities;
 
-    public ExpansionMacroAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation) {
+    public ExpansionMacroAction(GameStateNode<EmpireEvent> gameStateNode, int playerId, Logger log, boolean simulation) {
         super(gameStateNode, playerId, log, simulation);
         this.nonFriendlyCities = gameStateNode.knownOtherCities(playerId);
     }
 
 
     @Override
-    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit, Deque<Command<A>>> unitCommandQueues) throws ExecutableActionFactoryException {
-        Deque<MacroAction<A>> actions = new LinkedList<>();
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
+        Deque<MacroAction<EmpireEvent>> actions = new LinkedList<>();
         EmpireUnit selectedUnit = null;
         EmpireCity selectedCity = null;
 
@@ -107,7 +107,6 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
 
         // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
         notBusyUnits.addAll(notBusyUnitsOnCities);
-        log.info("Not busy units: " + notBusyUnits);
 
         ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
 
@@ -120,24 +119,24 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         }
 
         List<EmpireUnit> allUnitsExceptThoseLastOnCity = new ArrayList<>();
-
         // Force nearest unit to city, to expand (except units which are on cities)
         for (var unit : this.units) {
             if (!busyForProductionUnitsOnCity.contains(unit)) {
                 allUnitsExceptThoseLastOnCity.add(unit);
             }
         }
-
+        log.info("All Units Except Those Last On City: " + allUnitsExceptThoseLastOnCity);
         // If there is a unit, then select one
         if(!allUnitsExceptThoseLastOnCity.isEmpty()){
             Object[] selectedPair = findClosestPair(emptyCities, allUnitsExceptThoseLastOnCity);
             selectedCity = (EmpireCity) selectedPair[0];
             selectedUnit = (EmpireUnit) selectedPair[1];
         }
+        log.info("Shortest Pair: City at " + selectedCity.getPosition() + " Unit at " + selectedUnit.getPosition());
 
         // If there are no infantry units or all are infantry units are busy, then build one
         if(selectedUnit == null){
-            BuildAction<A> buildAction;
+            BuildAction<EmpireEvent> buildAction;
 
             EmpireUnit unitOnCity = null;
             // Select a random non producing city with units on it and produce infantry
@@ -167,7 +166,7 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         }
 
 
-        MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPANSION, selectedCity.getPosition(), playerId, log, simulation, true);
+        MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPANSION, selectedCity.getPosition(), playerId, log, simulation, true);
         actions.add(moveAction);
         citiesAlreadyVisiting.add(selectedCity);
 
@@ -191,8 +190,8 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
     }
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit, Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
-        Deque<MacroAction<A>> actions = generateExecutableAction(unitsCommandQueues);
+    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+        Deque<MacroAction<EmpireEvent>> actions = generateExecutableAction(unitsCommandQueues);
 
         Deque<EmpireEvent> events = new LinkedList<>();
         if (actions != null) {

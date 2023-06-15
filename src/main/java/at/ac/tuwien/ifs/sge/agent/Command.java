@@ -5,15 +5,15 @@ import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 
 import java.util.Deque;
 
-public class Command<A> {
+public class Command<EmpireEvent> {
 
 
-    private MacroAction<A> macroAction;
+    private MacroAction<EmpireEvent> macroAction;
 
     private Deque<EmpireEvent> actions;
 
 
-    public Command(MacroAction<A> marcoAction, Deque<EmpireEvent> actions) {
+    public Command(MacroAction<EmpireEvent> marcoAction, Deque<EmpireEvent> actions) {
         this.macroAction = marcoAction;
         this.actions = actions;
     }
@@ -21,7 +21,7 @@ public class Command<A> {
     public Command() {
     }
 
-    public MacroAction<A> getMacroAction() {
+    public MacroAction<EmpireEvent> getMacroAction() {
         return macroAction;
     }
 

@@ -15,14 +15,14 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Map;
 
-public class BuildAction<A> extends AbstractMacroAction<A> {
+public class BuildAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent> {
 
     private final String empireCityName;
     private final EmpireCity empireCity;
     private final EmpireUnit empireUnitOnCity;
     private final int unitTypeId;
 
-    public BuildAction(GameStateNode<A> gameStateNode, int playerId, Logger log, boolean simulation, EmpireCity empireCity, EmpireUnit empireUnit, int unitTypeName) {
+    public BuildAction(GameStateNode<EmpireEvent> gameStateNode, int playerId, Logger log, boolean simulation, EmpireCity empireCity, EmpireUnit empireUnit, int unitTypeName) {
         super(gameStateNode, playerId, log, simulation);
         this.empireCityName = empireCity.toString();
         this.empireCity = empireCity;
@@ -44,16 +44,16 @@ public class BuildAction<A> extends AbstractMacroAction<A> {
     }
 
     @Override
-    public Deque<MacroAction<A>> generateExecutableAction(Map<EmpireUnit, Deque<Command<A>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         return null;
     }
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<A>>> unitCommandQueues) {
+    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitCommandQueues) {
 
         Deque<EmpireEvent> buildActions = new LinkedList<>();
 
-        buildActions.add(new ProductionStartOrder(empireCity.getPosition(), unitTypeId));
+        buildActions.add((EmpireEvent) new ProductionStartOrder(empireCity.getPosition(), unitTypeId));
 
 
         return buildActions;
