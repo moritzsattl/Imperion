@@ -11,6 +11,7 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 import java.util.*;
 
 public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
+    private final static List<EmpireCity> citiesAlreadyVisiting = new ArrayList<>();
     private final List<EmpireCity> nonFriendlyCities;
     private Deque<EmpireEvent> path;
     private final boolean force;
@@ -34,7 +35,7 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         // Get empty cities
         List<EmpireCity> emptyCities = new LinkedList<>();
         for (var city: nonFriendlyCities) {
-            if (city.getOccupants().isEmpty()) {
+            if (city.getOccupants().isEmpty() && !citiesAlreadyVisiting.contains(city)) {
                 emptyCities.add(city);
             }
         }
@@ -42,7 +43,7 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         log.info("Empty Cities: " + emptyCities);
 
         if (emptyCities.isEmpty()) {
-            throw new ExecutableActionFactoryException("No empty cities found.");
+            throw new ExecutableActionFactoryException("No empty cities not already visiting found.");
         }
 
         // Units which are not busy (so no commands are scheduled or which are last unit on city tile)
@@ -189,6 +190,7 @@ public class ExpansionMacroAction<A> extends AbstractMacroAction<A> {
         MoveAction<A> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPANSION, selectedCity.getPosition(), playerId, log, simulation);
         actions.add(moveAction);
 
+        citiesAlreadyVisiting.add(selectedCity);
         return actions;
     }
 
