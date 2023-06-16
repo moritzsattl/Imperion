@@ -8,8 +8,6 @@ import at.ac.tuwien.ifs.sge.agent.macroactions.MoveAction;
 import at.ac.tuwien.ifs.sge.core.agent.AbstractRealTimeGameAgent;
 import at.ac.tuwien.ifs.sge.core.engine.communication.ActionResult;
 import at.ac.tuwien.ifs.sge.core.engine.communication.events.GameActionEvent;
-import at.ac.tuwien.ifs.sge.core.game.Game;
-import at.ac.tuwien.ifs.sge.core.game.RealTimeGame;
 import at.ac.tuwien.ifs.sge.core.game.exception.ActionException;
 import at.ac.tuwien.ifs.sge.core.util.Util;
 import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
@@ -17,6 +15,7 @@ import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.ProductionStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
+import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireProductionState;
@@ -41,6 +40,8 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     private static final int DEFAULT_SIMULATION_DEPTH = 20;
     private static final int DEFAULT_DECISION_PACE_MS = 1250;
 
+    private static final int DEFAULT_TIME_FOR_MACRO_ACTION_CALCULATIONS = 250;
+
 
     private final Comparator<Tree<GameStateNode<EmpireEvent>>> selectionComparator;
 
@@ -57,8 +58,6 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     private final Map<String,Deque<Command<EmpireEvent>>> simulatedCityCommandQueues;
 
     private int turnsPassed = 0;
-
-
 
     public Imperion(int playerId, String playerName, int logLevel) {
         super(Empire.class,playerId, playerName, logLevel);
@@ -524,14 +523,14 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         return simulatedCommands;
     }
 
-    private Deque<EmpireEvent> executeNextCommands(GameStateNode<EmpireEvent> gameStateNode) {
+    private Deque<EmpireEvent> executeNextCommands(GameStateNode<EmpireEvent> gameStateNode, long timeOfNextDecision) {
 
         //log.info("Executing next command from queue");
 
         Deque<EmpireEvent> executedCommands = new ArrayDeque<>();
 
         // Set an offset so the actions are not sent at the same time
-        int offset = 25;
+        int offset = 50;
         for (var unit : unitCommandQueues.keySet()) {
 
             if(turnsPassed % 2 == 0 || unit.getUnitTypeName().equals("Scout")){
@@ -544,20 +543,63 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                         continue;
                     }
 
+                    /*
+                    boolean pathPossible = true;
+                    boolean lastMovePossible = true;
+                    if(command.getMacroAction() instanceof MoveAction<EmpireEvent> moveAction){
+                        // If some move in the path was found to be not possible calc path again;
+                        for (var event : command.getActions()) {
+                            if(event instanceof MovementStartOrder movementStartOrder){
+                                Position pos = movementStartOrder.getDestination();
+                                try {
+                                    var tile = gameStateNode.getGame().getBoard().getTile(pos.getX(),pos.getY());
+                                    if(tile != null && tile.getOccupants() != null && !gameStateNode.getGame().getBoard().isMovementPossible(pos.getX(),pos.getY(),playerId)){
+                                            pathPossible = false;
+
+                                            if(moveAction.getDestination().equals(pos)){
+                                                lastMovePossible = false;
+                                                log.info("Last move in path not possible, removing from command queue");
+                                            }
+                                            break;
+                                        }
+                                    } catch (EmpireMapException e) {
+                                    log.info("Move in path not possible");
+                                    }
+                            }
+                        }
+
+                        // If last position, was found to be not possible remove from command list;
+                        if(!lastMovePossible){
+                            continue;
+                        }
+
+                        if(!pathPossible){
+                            log.info("Move in path not possible, calculating new path");
+                            var currentUnit = gameStateNode.getGame().getUnit(moveAction.getUnit().getId());
+                            MoveAction<EmpireEvent> newMoveAction = new MoveAction<>(gameStateNode,currentUnit, moveAction.getType(),moveAction.getDestination(),playerId,log,false,false);
+                            try {
+                                command = new Command<>(newMoveAction, newMoveAction.getResponsibleActions(unitCommandQueues));
+                            } catch (ExecutableActionFactoryException e) {
+                                log.info(e);
+                                log.info("Could not build command, in executeNextCommands(), removing from command queue");
+                                continue;
+                            }
+                        }
+                    }
+                    */
+                    //TODO: Add check if another ally is also going to the same tile, then take another path
+
+
                     EmpireEvent action = command.getActions().poll();
+
 
                     if (action == null) {
                         continue;
                     }
 
-                    //TODO: If some move in the path was found to be not possible calc path again;
-                    // If last position, was found to be not possible remove from command list;
-
-
-                    //TODO: Add check if another ally is also going to the same tile, then take another path
-                    executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
                     offset += 1;
+                    executedCommands.add(action);
 
                     // If command is not empty, and it back to the queue
                     if(!command.getActions().isEmpty()){
@@ -631,8 +673,8 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     command.getActions().addFirst((EmpireEvent) action);
                 }else{
                     //log.info(game.getPossibleActions(playerId));
-                    executedCommands.add(action);
                     sendAction(action,System.currentTimeMillis() + offset);
+                    executedCommands.add(action);
                     offset += 1;
 
                     // Change current unit type production
@@ -743,47 +785,43 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             try {
                 log._info_();
                 log.info("-----------------------Next game turn-------------------------");
+                var startTime = System.currentTimeMillis();
+                log.info(System.currentTimeMillis());
                 // Copy the game state and apply the last determined actions, since those actions were not yet accepted and sent back
                 // from the engine server at this point in time
                 Empire gameState = (Empire) game.copy();
 
                 // Apply event
+                log.info("Advancing the game");
                 if(lastExecutedCommands != null && !lastExecutedCommands.isEmpty()){
                     //log.info("Last executed Actions");
                     //log.info(lastExecutedCommands);
                     //log.info("Actually Scheduled Actions");
-                    int c = 1;
                     for (var action : lastExecutedCommands) {
-                        if(action != null && gameState.isValidAction(action, playerId)){
+                        if(action != null && gameState.isValidAction(action, playerId)) {
                             //log.info(action);
-                            gameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, gameState.getGameClock().getGameTimeMs() + c));
-                            c++;
+                            gameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, gameState.getGameClock().getGameTimeMs() + 1));
+                        }
+                        try {
+                            gameState.advance(DEFAULT_DECISION_PACE_MS / lastExecutedCommands.size());
+                        } catch (ActionException e) {
+                            log.info(e);
                         }
                     }
-                }
-
-                // Advance the game state in time by the decision pace since this is the point in time that the next best action will be sent
-                try{
-                    log.info("Advancing the game");
-                    gameState.advance(DEFAULT_DECISION_PACE_MS);
-                }catch(ActionException e){
-                    log.info(e);
-                    StringBuilder sb = new StringBuilder();
-                    for (StackTraceElement element : e.getStackTrace()) {
-                        sb.append(element.toString());
-                        sb.append("\n");
+                }else{
+                    try {
+                        gameState.advance(DEFAULT_DECISION_PACE_MS);
+                    } catch (ActionException e) {
+                        log.info(e);
                     }
-                    String stackTrace = sb.toString();
-                    log.info(stackTrace);
                 }
-
 
                 // Create a new tree with the game state as root
                 var advancedGameState = new EmpireDoubleLinkedTree(new GameStateNode<>(gameState, null));
 
                 var iterations = 0;
                 var now = System.currentTimeMillis();
-                var timeOfNextDecision = now + DEFAULT_DECISION_PACE_MS;
+                var timeOfNextDecision = now + DEFAULT_DECISION_PACE_MS - DEFAULT_TIME_FOR_MACRO_ACTION_CALCULATIONS;
 
                 //log.info("Before MCTS: \n" + printTree(advancedGameState,"",0));
 
@@ -811,9 +849,9 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     iterations++;
                 }
 
+                timeOfNextDecision = System.currentTimeMillis() + DEFAULT_TIME_FOR_MACRO_ACTION_CALCULATIONS;
 
                 //log.info("After MCTS: \n" + printTree(advancedGameState,"",0));
-
                 MacroActionType action = null;
                 if (advancedGameState.isLeaf()) {
                     //log.info("Could not find a move! Doing nothing...");
@@ -864,10 +902,20 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 log.info(citiesToWhichUnitTypeProducing);
                 log._info_();
 
+                // Check time to stay synced with server
+                var remainingTime = timeOfNextDecision - System.currentTimeMillis();
+                if (remainingTime > 0) {
+                    try {
+                        Thread.sleep(remainingTime);
+                    } catch (InterruptedException e) {
+                        log.info(e);
+                    }
+                }
 
                 // Executes for each unit there next actions in their own unit action command queue
                 lastExecutedCommands = executeNextCommands(advancedGameState.getNode());
                 turnsPassed++;
+                log.info("Time passed in this turn: " + (System.currentTimeMillis() - startTime));
 
             } catch (ActionException e) {
                 // Action weren't yet validated, try again
