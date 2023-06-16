@@ -15,9 +15,9 @@ import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.ProductionStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
-import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
+import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireProductionState;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
@@ -122,9 +122,8 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         }
 
         // Try to execute the old action, with new information about terrain
-        if(action instanceof MovementStartOrder){
-            MovementStartOrder movementStartOrder = (MovementStartOrder) action;
-            EmpireUnit unit = ((Empire) game).getUnit(movementStartOrder.getUnitId());
+        if(action instanceof MovementStartOrder movementStartOrder){
+            EmpireUnit unit = game.getUnit(movementStartOrder.getUnitId());
             log.info(action + " failed");
             Queue<Command<EmpireEvent>> unitCommandQueue = unitCommandQueues.get(unit);
             if(unitCommandQueue == null){
@@ -298,10 +297,20 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         return winners;
     }
 
-    private double[] utilityValue(Empire game) {
-        EmpireMap cityControl =  game.getBoard();
-        var unitAdvantage = multiplyArrayElements(game.getGameHeuristicValue(), 0.25);
-        return null;
+    private double utilityValue(Empire game, int playerId) {
+        ArrayList<EmpireCity> ourCities = new ArrayList<>();
+        // Order build action for all cities
+        for (var cityPos :game.getCitiesByPosition().keySet()) {
+            if(game.getCity(cityPos).getPlayerId() == playerId){
+                ourCities.add(game.getCity(cityPos));
+            }
+        }
+        double cityControl =  Math.log10(ourCities.size()/4.0);
+
+        double unitAdvantage = multiplyArrayElements(game.getGameHeuristicValue(), 0.25)[playerId];
+
+
+        return cityControl + unitAdvantage;
     }
 
     private static double[] multiplyArrayElements(double[] array, double multiplier) {
@@ -888,14 +897,14 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     }
                 }
 
-                //for (var city :
-                //        cityCommandQueue.keySet()) {
-                //    log._info_();
-                //    log.info("Commands in queue for " + city);
-                //    for (Command<EmpireEvent> command: cityCommandQueue.get(city)) {
-                //        log.info(command);
-                //    }
-                //}
+                for (var city :
+                        cityCommandQueue.keySet()) {
+                    log._info_();
+                    log.info("Commands in queue for " + city);
+                    for (Command<EmpireEvent> command: cityCommandQueue.get(city)) {
+                        log.info(command);
+                    }
+                }
 
                 log._info_();
                 log.info("Cities To Unit Type Producing");
@@ -913,7 +922,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 }
 
                 // Executes for each unit there next actions in their own unit action command queue
-                lastExecutedCommands = executeNextCommands(advancedGameState.getNode());
+                lastExecutedCommands = executeNextCommands(advancedGameState.getNode(), timeOfNextDecision);
                 turnsPassed++;
                 log.info("Time passed in this turn: " + (System.currentTimeMillis() - startTime));
 
