@@ -43,7 +43,7 @@ public class MoveAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent>{
 
 
     @Override
-    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<UUID, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         return null;
     }
 
@@ -56,7 +56,7 @@ public class MoveAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent>{
     }
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<EmpireEvent> getResponsibleActions(Map<UUID,Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         if(path == null){
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
             //log.info("Calculated Path: ");

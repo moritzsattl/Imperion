@@ -3,7 +3,6 @@ package at.ac.tuwien.ifs.sge.agent.macroactions;
 import at.ac.tuwien.ifs.sge.agent.*;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.core.util.Util;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireProductionState;
@@ -13,35 +12,49 @@ import java.util.*;
 
 public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent> {
     private final static List<EmpireCity> citiesAlreadyVisiting = new ArrayList<>();
-    private final List<EmpireCity> nonFriendlyCities;
+    private final List<EmpireCity> emptyCitiesInSight;
 
     public ExpansionMacroAction(GameStateNode<EmpireEvent> gameStateNode, int playerId, Logger log, boolean simulation) {
         super(gameStateNode, playerId, log, simulation);
-        this.nonFriendlyCities = gameStateNode.knownOtherCities(playerId);
+        this.emptyCitiesInSight = gameStateNode.knownOtherCities(playerId);
     }
 
 
     @Override
-    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<UUID, Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<EmpireEvent>> actions = new LinkedList<>();
         EmpireUnit selectedUnit = null;
         EmpireCity selectedCity = null;
 
         // Find City to Expand to
-        log.info("Not Friendly Cities: " +  nonFriendlyCities);
+        log.info("Not Friendly Cities: " + emptyCitiesInSight);
 
+
+        List<EmpireUnit> busyWithExpandingUnits = new ArrayList<>();
         // Get empty cities
-        List<EmpireCity> emptyCities = new LinkedList<>();
-        for (var city: nonFriendlyCities) {
-            if (city.getOccupants().isEmpty() && !citiesAlreadyVisiting.contains(city)) {
-                emptyCities.add(city);
+        List<EmpireCity> emptyWhichAreNotAlreadyBeenVisited = new LinkedList<>();
+        for (var city: emptyCitiesInSight) {
+            if (city.getOccupants().isEmpty()) {
+                boolean otherUnitExpandingToCity = false;
+                for (var unitId: unitCommandQueues.keySet()) {
+                    Command<EmpireEvent> command = unitCommandQueues.get(unitId).peek();
+                    if(command != null && command.getMacroAction() instanceof MoveAction<EmpireEvent> moveAction){
+                        if(moveAction.getDestination().equals(city.getPosition()) && moveAction.getType() == MacroActionType.EXPANSION){
+                            busyWithExpandingUnits.add(game.getUnit(unitId));
+                            otherUnitExpandingToCity = true;
+                        }
+                    }
+                }
+                if(!otherUnitExpandingToCity){
+                    emptyWhichAreNotAlreadyBeenVisited.add(city);
+                }
             }
         }
 
-        log.info("Empty Cities: " + emptyCities);
+        log.info("Empty Cities: " + emptyWhichAreNotAlreadyBeenVisited);
 
-        if (emptyCities.isEmpty()) {
-            throw new ExecutableActionFactoryException("No empty cities not already visiting found.");
+        if (emptyWhichAreNotAlreadyBeenVisited.isEmpty()) {
+            throw new ExecutableActionFactoryException("No empty cities in sight.");
         }
 
         // Units which are not busy (so no commands are scheduled or which are last unit on city tile)
@@ -52,7 +65,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
         for (var unit: units) {
             var unitPosition = unit.getPosition();
             // Not busy units
-            if((unitCommandQueues.get(unit) == null || unitCommandQueues.get(unit).isEmpty())){
+            if((unitCommandQueues.get(unit.getId()) == null || unitCommandQueues.get(unit.getId()).isEmpty())){
 
                 if(!game.getCitiesByPosition().containsKey(unitPosition)){
                     // Units which are not on cities
@@ -118,21 +131,20 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
             }
         }
 
-        List<EmpireUnit> allUnitsExceptThoseLastOnCity = new ArrayList<>();
+        List<EmpireUnit> allUnitsExceptThoseLastOnCityAndThoseBusyExpanding = new ArrayList<>();
         // Force nearest unit to city, to expand (except units which are on cities)
         for (var unit : this.units) {
-            if (!busyForProductionUnitsOnCity.contains(unit)) {
-                allUnitsExceptThoseLastOnCity.add(unit);
+            if (!busyForProductionUnitsOnCity.contains(unit) && !busyWithExpandingUnits.contains(unit)) {
+                allUnitsExceptThoseLastOnCityAndThoseBusyExpanding.add(unit);
             }
         }
-        log.info("All Units Except Those Last On City: " + allUnitsExceptThoseLastOnCity);
+        log.info("All Units Except Those Last On City And Those Busy Expanding: " + allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
         // If there is a unit, then select one
-        if(!allUnitsExceptThoseLastOnCity.isEmpty()){
-            Object[] selectedPair = findClosestPair(emptyCities, allUnitsExceptThoseLastOnCity);
+        if(!allUnitsExceptThoseLastOnCityAndThoseBusyExpanding.isEmpty()){
+            Object[] selectedPair = findClosestPair(emptyWhichAreNotAlreadyBeenVisited, allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
             selectedCity = (EmpireCity) selectedPair[0];
             selectedUnit = (EmpireUnit) selectedPair[1];
         }
-        log.info("Shortest Pair: City at " + selectedCity.getPosition() + " Unit at " + selectedUnit.getPosition());
 
         // If there are no infantry units or all are infantry units are busy, then build one
         if(selectedUnit == null){
@@ -156,19 +168,18 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
             }
 
             // If no units are free and buildAction could not be scheduled, throw exception
-            if(selectedUnit == null){
-                if(actions.isEmpty()){
-                    throw new ExecutableActionFactoryException("All units busy or last on city tile, can't even order build action");
-                }
-                // If there are no units, which are free (not last unit on a city tile) just order buildAction
-                return actions;
+            if(actions.isEmpty()){
+                throw new ExecutableActionFactoryException("All units busy or last on city tile, even order build action");
             }
+            // If there are no units, which are free (not last unit on a city tile) just order buildAction
+            return actions;
         }
+
+
 
 
         MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPANSION, selectedCity.getPosition(), playerId, log, simulation, true);
         actions.add(moveAction);
-        citiesAlreadyVisiting.add(selectedCity);
 
         return actions;
     }
@@ -190,7 +201,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
     }
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<EmpireEvent> getResponsibleActions(Map<UUID, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<EmpireEvent>> actions = generateExecutableAction(unitsCommandQueues);
 
         Deque<EmpireEvent> events = new LinkedList<>();

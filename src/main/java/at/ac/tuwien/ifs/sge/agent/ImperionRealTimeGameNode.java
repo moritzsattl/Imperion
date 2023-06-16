@@ -25,7 +25,7 @@ class ImperionRealTimeGameNode<EmpireEvent> {
 
 
     // This method return all possible macro actions by each individual player
-    public Map<Integer, Stack<MacroActionType>> getAllPossibleMacroActionsByAllPlayer(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitCommandQueues) {
+    public Map<Integer, Stack<MacroActionType>> getAllPossibleMacroActionsByAllPlayer(Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues) {
         Map<Integer, Stack<MacroActionType>> getAllPossibleMacroActionsByPlayer = new HashMap<>();
         for (int playerId = 0; playerId < game.getNumberOfPlayers(); playerId++) {
             Stack<MacroActionType> actions = new Stack<>();
@@ -54,15 +54,13 @@ class ImperionRealTimeGameNode<EmpireEvent> {
                 actions.add(MacroActionType.EXPLORATION);
             }
 
-
             //if(!knownOtherCities(playerId).isEmpty()) {
             //    actions.add(MacroActionType.EXPANSION);
             //}
 
-
-            //if(!enemiesInSight(playerId).isEmpty()){
-            //    actions.add(MacroActionType.ATTACK);
-            //}
+            if(!enemiesInSight(playerId).isEmpty()){
+                actions.add(MacroActionType.ATTACK);
+            }
 
             //TODO: add only macro actions if certain Empire events exist at the moment
             // For example: Only add MOVE_UNITS MacroActionType is there is possible actions 'MovementOrder' from the game
@@ -77,7 +75,7 @@ class ImperionRealTimeGameNode<EmpireEvent> {
         List<EmpireUnit> enemies = new ArrayList<>();
         for (int otherPlayerId = 0; otherPlayerId < game.getNumberOfPlayers(); otherPlayerId++) {
             if(otherPlayerId != playerId){
-                enemies.addAll(((Empire) game).getUnitsByPlayer(otherPlayerId));
+                enemies.addAll(game.getUnitsByPlayer(otherPlayerId));
             }
         }
 

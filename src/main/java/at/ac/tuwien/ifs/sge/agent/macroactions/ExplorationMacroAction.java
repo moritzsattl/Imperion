@@ -24,7 +24,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
         this.destinations = null;
     }
 
-    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<EmpireEvent>> actions = new LinkedList<>();
 
         Set<Position> knownPositions = getKnownPositions(game.getUnitsByPlayer(playerId).get(0).getPosition());
@@ -39,7 +39,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             }
         }
 
-        double FAR_EXPLORATION_CONSTANT = 0.6;
+        double FAR_EXPLORATION_CONSTANT = 1;
         Random rand = new Random();
 
         double maxDistance = -1;
@@ -60,10 +60,18 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
                 }
             } else {
-                destination = Util.selectRandom(unknownPositions);
+
+                //destination = Util.selectRandom(unknownPositions);
+                ArrayList<Position> pos = new ArrayList<>();
+                pos.add(new Position(15,15));
+                pos.add(new Position(15,14));
+                pos.add(new Position(16,16));
+                pos.add(new Position(14,14));
+                destination = Util.selectRandom(pos);
             }
 
         }else {
+            log.info("All positions are known");
             // If all tiles are known, move towards an enemy city.
             Map<Position, EmpireCity> cities = game.getCitiesByPosition();
 
@@ -78,7 +86,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             }
 
             if(enemyCities.isEmpty()){
-                throw new ExecutableActionFactoryException();
+                throw new ExecutableActionFactoryException("No enemy cities found to be explored");
             }
 
             destination = Util.selectRandom(enemyCities).getPosition();
@@ -93,7 +101,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
         for (var unit: units) {
             var unitPosition = unit.getPosition();
             // Unit which are not busy
-            if((unitCommandQueues.get(unit) == null || unitCommandQueues.get(unit).isEmpty())){
+            if((unitCommandQueues.get(unit.getId()) == null || unitCommandQueues.get(unit.getId()).isEmpty())){
 
                 if(!game.getCitiesByPosition().containsKey(unitPosition)){
                     // Units which are not on cities
@@ -225,6 +233,8 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             throw new ExecutableActionFactoryException();
         }
 
+        log.info("Selected Unit: "  + selectedUnit);
+
         MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination,playerId, log, simulation,false);
         actions.add(moveAction);
 
@@ -299,9 +309,8 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<EmpireEvent> getResponsibleActions(Map<UUID,Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<EmpireEvent>> executable = generateExecutableAction(unitsCommandQueues);
-
         Deque<EmpireEvent> events = new LinkedList<>();
         if (executable != null) {
             while (!executable.isEmpty()){
