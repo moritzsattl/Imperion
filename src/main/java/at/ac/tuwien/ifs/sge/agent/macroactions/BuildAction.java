@@ -14,6 +14,7 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.UUID;
 
 public class BuildAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent> {
 
@@ -44,12 +45,12 @@ public class BuildAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent> {
     }
 
     @Override
-    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<EmpireUnit, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
+    public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<UUID, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         return null;
     }
 
     @Override
-    public Deque<EmpireEvent> getResponsibleActions(Map<EmpireUnit,Deque<Command<EmpireEvent>>> unitCommandQueues) {
+    public Deque<EmpireEvent> getResponsibleActions(Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues) {
 
         Deque<EmpireEvent> buildActions = new LinkedList<>();
 
