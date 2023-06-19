@@ -14,10 +14,10 @@ import at.ac.tuwien.ifs.sge.game.empire.communication.event.action.ProductionAct
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.action.UnitVanishedAction;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.CombatStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.ProductionStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
+import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
@@ -50,8 +50,8 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     private final Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues;
     private final Map<Position,Deque<Command<EmpireEvent>>> cityCommandQueue;
 
-    private Map<UUID, ImperionUnitState> unitState;
-    private Map<Position, ImperionCityState> cityState;
+    private final Map<UUID, ImperionUnitState> unitState;
+    private final Map<Position, ImperionCityState> cityState;
 
 
     private final Map<UUID,Deque<Command<EmpireEvent>>> simulatedUnitCommandQueues;
@@ -225,7 +225,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     //log.info("executeAction was successful");
                     // If actions were successfully executed, by each player
                     actionsTaken.put(playerId,actionType);
-                    expandedTree = new EmpireDoubleLinkedTree(new GameStateNode<EmpireEvent>( gameState.getGame(), actionsTaken));
+                    expandedTree = new EmpireDoubleLinkedTree(new GameStateNode<>( gameState.getGame(), actionsTaken));
                 }
             }
 
@@ -302,10 +302,20 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         return winners;
     }
 
-    private double[] utilityValue(Empire game) {
-        EmpireMap cityControl =  game.getBoard();
-        var unitAdvantage = multiplyArrayElements(game.getGameHeuristicValue(), 0.25);
-        return null;
+    private double utilityValue(Empire game, int playerId) {
+        ArrayList<EmpireCity> ourCities = new ArrayList<>();
+        // Order build action for all cities
+        for (var cityPos :game.getCitiesByPosition().keySet()) {
+            if(game.getCity(cityPos).getPlayerId() == playerId){
+                ourCities.add(game.getCity(cityPos));
+            }
+        }
+        double cityControl =  Math.log10(ourCities.size()*0.25);
+
+        double unitAdvantage = multiplyArrayElements(game.getGameHeuristicValue(), 0.25)[playerId];
+
+
+        return cityControl + unitAdvantage;
     }
 
     private static double[] multiplyArrayElements(double[] array, double multiplier) {
@@ -331,9 +341,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     private String printTree(Tree<GameStateNode<EmpireEvent>> tree, String s, int level) {
 
-        for (int i = 0; i < level; i++) {
-            s += "  ";
-        }
+        s = s + "  ".repeat(Math.max(0, level));
         s += tree.getNode() + "\n";
         if (tree.getChildren() != null) {
             for (int i = 0; i < tree.getChildren().size(); i++) {
@@ -384,7 +392,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     private void addToCommandQueue(Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues, Map<Position,Deque<Command<EmpireEvent>>> cityCommandQueues, MacroAction<EmpireEvent> macroAction, GameStateNode<EmpireEvent> gameState) {
 
-        Command<EmpireEvent> command = null;
+        Command<EmpireEvent> command;
         try {
             command = new Command<>(macroAction, macroAction.getResponsibleActions(unitCommandQueues));
         } catch (ExecutableActionFactoryException e) {
@@ -447,7 +455,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     }
 
     private void overwriteFirstCommandInCommandQueue(Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues,MacroAction<EmpireEvent> macroAction) {
-        Command<EmpireEvent> command = null;
+        Command<EmpireEvent> command;
         try {
             command = new Command<>(macroAction, macroAction.getResponsibleActions(unitCommandQueues));
         } catch (ExecutableActionFactoryException e) {
@@ -822,7 +830,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 //log.info("After MCTS: \n" + printTree(advancedGameState,"",0));
                 MacroActionType action = null;
                 if (advancedGameState.isLeaf()) {
-                    //log.info("Could not find a move! Doing nothing...");
+                    log.info("Could not find a move! Doing nothing...");
                 } else {
                     // Select the most visited node from the root node and send it to the engine server
                     log._info_();
@@ -902,7 +910,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         Set<Position> validLocations = new HashSet<>();
 
         // Get empire map and empire tiles
-        EmpireMap map = (EmpireMap) game.getBoard();
+        EmpireMap map = game.getBoard();
         EmpireTerrain[][] empireTiles = map.getEmpireTiles();
 
         // Initialize queue for positions to be checked and set to store checked positions
@@ -910,7 +918,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         Set<Position> checkedPositions = new HashSet<>();
 
         // Add starting position to the queue
-        positionsToCheck.add(((Empire)game).getUnitsByPlayer(playerId).get(0).getPosition());
+        positionsToCheck.add((game).getUnitsByPlayer(playerId).get(0).getPosition());
 
         while (!positionsToCheck.isEmpty()) {
             Position current = positionsToCheck.poll();
