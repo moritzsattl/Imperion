@@ -29,6 +29,8 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
         Set<Position> knownPositions = getKnownPositions(game.getUnitsByPlayer(playerId).get(0).getPosition());
 
+        log.info("Known Positions calced");
+
         Stack<Position> unknownPositions = new Stack<>();
         for (int y = 0; y < game.getBoard().getEmpireTiles().length; y++) {
             for (int x = 0; x < game.getBoard().getEmpireTiles()[y].length; x++) {
@@ -39,7 +41,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             }
         }
 
-        double FAR_EXPLORATION_CONSTANT = 1;
+        double FAR_EXPLORATION_CONSTANT = 0.6;
         Random rand = new Random();
 
         double maxDistance = -1;
@@ -61,13 +63,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
                 }
             } else {
 
-                //destination = Util.selectRandom(unknownPositions);
-                ArrayList<Position> pos = new ArrayList<>();
-                pos.add(new Position(15,15));
-                pos.add(new Position(15,14));
-                pos.add(new Position(16,16));
-                pos.add(new Position(14,14));
-                destination = Util.selectRandom(pos);
+                destination = Util.selectRandom(unknownPositions);
             }
 
         }else {
