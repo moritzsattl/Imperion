@@ -54,9 +54,9 @@ class ImperionRealTimeGameNode<EmpireEvent> {
                 actions.add(MacroActionType.EXPLORATION);
             }
 
-            //if(!knownOtherCities(playerId).isEmpty()) {
-            //    actions.add(MacroActionType.EXPANSION);
-            //}
+            if(!knownOtherCities(playerId).isEmpty()) {
+                actions.add(MacroActionType.EXPANSION);
+            }
 
             if(!enemiesInSight(playerId).isEmpty()){
                 actions.add(MacroActionType.ATTACK);
