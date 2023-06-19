@@ -103,6 +103,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     @Override
     protected void onGameUpdate(EmpireEvent action, ActionResult result) {
+        log.info(game.getGameConfiguration().getUnitCap());
         if(action instanceof ProductionAction productionAction){
             log.info(productionAction);
             cityState.put(productionAction.getCityPosition(), ImperionCityState.IDLE);
@@ -310,19 +311,12 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 ourCities.add(game.getCity(cityPos));
             }
         }
-        double cityControl =  Math.log10(ourCities.size()*0.25);
+        double cityControl =  Math.log10(ourCities.size())*0.25;
 
-        double unitAdvantage = multiplyArrayElements(game.getGameHeuristicValue(), 0.25)[playerId];
+        double unitAdvantage = (game.getGameHeuristicValue()[playerId]) * 0.25;
 
 
         return cityControl + unitAdvantage;
-    }
-
-    private static double[] multiplyArrayElements(double[] array, double multiplier) {
-        for (int i = 0; i < array.length; i++) {
-            array[i] *= multiplier;
-        }
-        return array;
     }
 
     private void backPropagation(Tree<GameStateNode<EmpireEvent>> tree, boolean[] winners) {
