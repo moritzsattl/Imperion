@@ -41,3 +41,7 @@ jar {
 shadowJar {
     archiveClassifier.set('exe');
 }
+
+compileJava {
+    options.compilerArgs += ['-g']
+}
