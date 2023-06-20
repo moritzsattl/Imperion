@@ -104,7 +104,6 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     @Override
     protected void onGameUpdate(EmpireEvent action, ActionResult result) {
-        log.info(game.getGameConfiguration().getUnitCap());
         if(action instanceof ProductionAction productionAction){
             log.info(productionAction);
             cityState.put(productionAction.getCityPosition(), ImperionCityState.IDLE);
@@ -143,6 +142,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             log.info("unitCommandQueue for " + unit +  " was empty, action could not reinited");
         }
 
+        assert commandInQueueFromUnit != null;
         Command<EmpireEvent> commandWhichWasRejected = commandInQueueFromUnit.peek();
 
         // If null then there are no more commands in queue
@@ -216,7 +216,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     actionType = Util.selectRandom(possibleActions.get(playerId));
                 }
 
-                log.info("action type selected");
+                log.info("action type selected: " + actionType);
 
                 if(actionType != null){
                     try{
@@ -228,7 +228,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                         //log.info("[ERROR] NoSuchElementException while advancing the game in expansion" + e);
                         continue;
                     }
-                    //log.info("executeAction was successful");
+                    log.info("executeAction was successful");
                     // If actions were successfully executed, by each player
                     actionsTaken.put(playerId,actionType);
                     expandedTree = new EmpireDoubleLinkedTree(new GameStateNode<>( gameState.getGame(), actionsTaken));
@@ -352,7 +352,9 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
 
     private void executeMacroAction(MacroActionType actionType, int playerId, GameStateNode<EmpireEvent> gameState, boolean simulate) throws ActionException, NoSuchElementException {
+        log.trace("executeMacroAction start");
         MacroAction<EmpireEvent> macroAction = new MacroActionFactory().createMacroAction(actionType, gameState, playerId, log, simulate);
+        log.trace("macroAction created");
 
         Deque<MacroAction<EmpireEvent>> actions = null;
         try{
@@ -370,7 +372,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             log.info(actions);
         }
 
-        log.info("Generated MacroAction");
+        log.trace("Generated MacroAction");
         // For each type macro action add to command queue
         while (actions != null && !actions.isEmpty()){
             MacroAction<EmpireEvent> action = actions.poll();
@@ -378,15 +380,16 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             if(simulate){
                 addToCommandQueue(simulatedUnitCommandQueues, simulatedCityCommandQueues,action, gameState);
                 // Simulate scheduled actions
-                Queue<EmpireEvent> simulatedActions = simulateNextCommands(gameState,playerId);
+                //Queue<EmpireEvent> simulatedActions = simulateNextCommands(gameState,playerId);
             }else{
                 addToCommandQueue(unitCommandQueues, cityCommandQueue,action, gameState);
             }
         }
+        log.trace("executeMacroAction end");
     }
 
     private void addToCommandQueue(Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues, Map<Position,Deque<Command<EmpireEvent>>> cityCommandQueues, MacroAction<EmpireEvent> macroAction, GameStateNode<EmpireEvent> gameState) {
-
+        log.trace("addToCommandQueue start");
         Command<EmpireEvent> command;
         try {
             command = new Command<>(macroAction, macroAction.getResponsibleActions(unitCommandQueues));
@@ -446,7 +449,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             }
         }
 
-
+        log.trace("addToCommandQueue end");
     }
 
     private void overwriteFirstCommandInCommandQueue(Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues,MacroAction<EmpireEvent> macroAction) {

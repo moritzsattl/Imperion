@@ -27,7 +27,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
         EmpireCity selectedCity = null;
 
         // Find City to Expand to
-        log.info("Not Friendly Cities: " + emptyCitiesInSight);
+        log.debug("Not Friendly Cities: " + emptyCitiesInSight);
 
 
         List<EmpireUnit> busyWithExpandingUnits = new ArrayList<>();
@@ -51,7 +51,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
             }
         }
 
-        log.info("Empty Cities: " + emptyWhichAreNotAlreadyBeenVisited);
+        log.debug("Empty Cities: " + emptyWhichAreNotAlreadyBeenVisited);
 
         if (emptyWhichAreNotAlreadyBeenVisited.isEmpty()) {
             throw new ExecutableActionFactoryException("No empty cities in sight.");
