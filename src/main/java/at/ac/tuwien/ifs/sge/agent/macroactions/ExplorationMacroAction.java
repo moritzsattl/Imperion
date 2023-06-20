@@ -27,9 +27,12 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
     public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<UUID,Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
         Deque<MacroAction<EmpireEvent>> actions = new LinkedList<>();
 
-        Set<Position> knownPositions = getKnownPositions(game.getUnitsByPlayer(playerId).get(0).getPosition());
+        List<EmpireUnit> unitsByPlayer = game.getUnitsByPlayer(playerId);
+        if (unitsByPlayer == null || unitsByPlayer.isEmpty()) throw new ExecutableActionFactoryException("couldn't get Units of Player: " + playerId);
+        var firstUnitPosition = unitsByPlayer.get(0).getPosition();
+        Set<Position> knownPositions = getKnownPositions(firstUnitPosition);
 
-        log.info("Known Positions calced");
+        log.trace("Known Positions calced");
 
         Stack<Position> unknownPositions = new Stack<>();
         for (int y = 0; y < game.getBoard().getEmpireTiles().length; y++) {
@@ -40,6 +43,8 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
                 }
             }
         }
+
+        log.trace("Unknown Positions calced");
 
         double FAR_EXPLORATION_CONSTANT = 0.6;
         Random rand = new Random();
@@ -157,7 +162,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
         // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
         notBusyUnits.addAll(notBusyUnitsOnCities);
-        log.info("Not busy units: " + notBusyUnits);
+        log.debug("Not busy units: " + notBusyUnits);
 
 
         ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
@@ -251,6 +256,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
 
     public Set<Position> getKnownPositions(Position start){
+        log.trace("geKnownPositions Start");
         // Get valid and visible locations the unit can move to using the FloodFill Algorithm
         Set<Position> validLocations = new HashSet<>();
 
@@ -300,6 +306,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             throw new NoSuchElementException();
         }
 
+        log.trace("geKnownPositions End");
         return validLocations;
     }
 
