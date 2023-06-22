@@ -22,7 +22,8 @@ public class AStar {
     private Logger log;
 
     public <A> AStar(Position startPos, Position endPos, GameStateNode<A> gameStateNode, int playerId, Logger log) {
-        map = ((Empire) gameStateNode.getGame()).getBoard();
+        if (!withinBounds(endPos.getX(), endPos.getY())) throw new IndexOutOfBoundsException("The Position " + endPos + " is out of bounds");
+        map = gameStateNode.getGame().getBoard();
         Comparator<AStarNode> comparator = Comparator.comparingInt(AStarNode::getfCost);
         openList = new TreeSet<>(comparator);
         openSet = new HashSet<>();
