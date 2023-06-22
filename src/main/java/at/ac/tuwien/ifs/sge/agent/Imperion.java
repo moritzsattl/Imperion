@@ -31,14 +31,14 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     public static void main(String[] args) {
         var playerId = getPlayerIdFromArgs(args);
         var playerName = getPlayerNameFromArgs(args);
-        var agent = new Imperion(playerId, playerName, 0);
+        var agent = new Imperion(playerId, playerName);
         agent.start();
     }
 
     private static final double DEFAULT_EXPLOITATION_CONSTANT = Math.sqrt(2);
     private static final int DEFAULT_SIMULATION_PACE_MS = 1250;
     private static final int DEFAULT_SIMULATION_DEPTH = 20;
-    private static final int DEFAULT_DECISION_PACE_MS = 2400;
+    private static final int DEFAULT_DECISION_PACE_MS = 1250;
 
     private static final int MACRO_ACTION_CALCULATIONS_TIME = 100;
 
@@ -60,9 +60,10 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     private int turnsPassed = 0;
 
-    public Imperion(int playerId, String playerName, int logLevel) {
-        super(Empire.class,playerId, playerName, logLevel);
+    private static int LOG_LEVEL = -2;
 
+    public Imperion(int playerId, String playerName) {
+        super(Empire.class,playerId, playerName, LOG_LEVEL);
 
         // Compares two nodes based on their UCB values
         Comparator<Tree<GameStateNode<EmpireEvent>>> gameMcTreeUCTComparator = Comparator
@@ -104,6 +105,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     @Override
     protected void onGameUpdate(EmpireEvent action, ActionResult result) {
+        log.trace("onGameUpdate()");
         if(action instanceof ProductionAction productionAction){
             log.info(productionAction);
             cityState.put(productionAction.getCityPosition(), ImperionCityState.IDLE);
@@ -118,6 +120,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     @Override
     protected void onActionRejected(EmpireEvent action) {
+        log.trace("onActionRejected()");
         log.info(action + " failed");
         if (action instanceof CombatStartOrder cso) {
             var unitId = cso.getAttackerId();
@@ -137,6 +140,12 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     }
 
     private void reemployMoveAction(EmpireUnit unit) {
+        log.trace("reemployMoveAction() start");
+        if (unit == null) {
+            log.info("unit to reemploy is null");
+            log.trace("reemployMoveAction() end");
+            return;
+        }
         Queue<Command<EmpireEvent>> commandInQueueFromUnit = unitCommandQueues.get(unit.getId());
         if(commandInQueueFromUnit == null){
             log.info("unitCommandQueue for " + unit +  " was empty, action could not reinited");
@@ -150,10 +159,9 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             // Try executing command again (only if movement to tile is possible)
             MoveAction<EmpireEvent> moveAction = (MoveAction<EmpireEvent>) commandWhichWasRejected.getMacroAction();
             GameStateNode<EmpireEvent> advancedGameState = new GameStateNode<>((Empire) game.copy(),null);
-            addToCommandQueue(unitCommandQueues,cityCommandQueue,new MoveAction<>(advancedGameState,unit, moveAction.getType(),moveAction.getDestination(),unit.getPlayerId(),log,false,true),advancedGameState);
+            addToCommandQueue(unitCommandQueues,cityCommandQueue,new MoveAction<>(advancedGameState,unit, moveAction.getType(),moveAction.getDestination(),playerId,log,false,true),advancedGameState);
         }
-
-
+        log.trace("reemployMoveAction() end");
     }
 
     @Override
@@ -191,6 +199,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
 
     private Tree<GameStateNode<EmpireEvent>> expansion(Tree<GameStateNode<EmpireEvent>> tree) {
+        log.trace("expansion() start");
         var gameState = tree.getNode();
 
         Map<Integer, MacroActionType> actionsTaken = new HashMap<>();
@@ -242,6 +251,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             actionsTaken = new HashMap<>();
         }
 
+        log.trace("expansion() end");
         if(expandedTree == null){
             return tree;
         }
@@ -251,6 +261,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
 
     private boolean[] simulation(Tree<GameStateNode<EmpireEvent>> tree, long nextDecisionTime) {
+        log.trace("simulation() start");
         var gameState = tree.getNode();
 
         var depth = 0;
@@ -279,6 +290,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
         //log.info(gameState.getGame().getBoard());
 
+        log.trace("simulation() end");
         return determineWinner(game);
     }
 
@@ -364,10 +376,10 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 actions = macroAction.generateExecutableAction(unitCommandQueues);
             }
         }catch (ExecutableActionFactoryException e){
-            log.info(e);
+            if(!simulate) log.info(e); //TODO
         }
 
-        if(!simulate){
+        if(!simulate) {
             log.info("Add following actions to Queues");
             log.info(actions);
         }
@@ -602,6 +614,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         // Set an offset so the actions are not sent at the same time
         int offset = 25;
         for (var unitID : unitCommandQueues.keySet()) {
+            if (gameStateNode.getGame().getUnit(unitID) == null) continue;
 
             if(unitState.getOrDefault(unitID,ImperionUnitState.IDLE) == ImperionUnitState.IDLE /*&& (turnsPassed % 2 == 0 || (gameStateNode.getGame().getUnit(unitID) != null && gameStateNode.getGame().getUnit(unitID).getUnitTypeName().equals("Scout"))*/){
 
@@ -946,7 +959,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
                 for (var unitId : unitCommandQueues.keySet()) {
                     log._info_();
-                    if(!unitCommandQueues.get(unitId).isEmpty()) {
+                    if(gameState.getUnit(unitId) != null && !unitCommandQueues.get(unitId).isEmpty()) {
                         log.info("Commands in queue for " + gameState.getUnit(unitId));
                         for (Command<EmpireEvent> command : unitCommandQueues.get(unitId)) {
                             log.info(command);
@@ -1006,7 +1019,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         Set<Position> checkedPositions = new HashSet<>();
 
         // Add starting position to the queue
-        positionsToCheck.add((game).getUnitsByPlayer(playerId).get(0).getPosition());
+        positionsToCheck.add(game.getUnitsByPlayer(playerId).get(0).getPosition());
 
         while (!positionsToCheck.isEmpty()) {
             Position current = positionsToCheck.poll();
