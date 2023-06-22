@@ -51,7 +51,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
             }
         }
 
-        log.debug("Empty Cities: " + emptyWhichAreNotAlreadyBeenVisited);
+        if (emptyWhichAreNotAlreadyBeenVisited.size()>0) log.debug("Empty Cities: " + emptyWhichAreNotAlreadyBeenVisited);
 
         if (emptyWhichAreNotAlreadyBeenVisited.isEmpty()) {
             throw new ExecutableActionFactoryException("No empty cities in sight.");
