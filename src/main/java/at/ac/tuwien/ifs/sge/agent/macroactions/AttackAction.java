@@ -78,7 +78,7 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
         }
 
 
-        if(path == null){
+        if(path == null) {
             AStar aStar = new AStar(unit.getPosition(),attackingFrom,gameStateNode,playerId, log);
             //log.info("Calculated Path: ");
             AStarNode currentNode = aStar.findPath(simulation);

@@ -60,7 +60,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     private int turnsPassed = 0;
 
-    private static int LOG_LEVEL = 1;
+    private static int LOG_LEVEL = -1;
 
     public Imperion(int playerId, String playerName) {
         super(Empire.class,playerId, playerName, LOG_LEVEL);
@@ -346,13 +346,24 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 ourCities.add(game.getCity(cityPos));
             }
         }
-        double cityControl =  0.25 - Math.log10(ourCities.size())*0.25;
+        double cityControl = (1.0-(1.0/(ourCities.size()+1)))*0.25;
 
-        double unitAdvantage = (game.getGameHeuristicValue()[playerId] / game.getGameConfiguration().getUnitCap()) * 0.25;
+        double unitCount = game.getUnitsByPlayer(playerId).size();
+        double unitAdvantage = (unitCount / game.getGameConfiguration().getUnitCap())*0.25;
 
-        log.debug("playerId: " + playerId + ", cityControl: " + cityControl + ", unitAdvantage: " + unitAdvantage);
+        double enemyUnitsCount = 0;
+        for (int i = 0; i < game.getNumberOfPlayers(); i++) {
+            if (i == playerId) continue;
+            enemyUnitsCount += game.getUnitsByPlayer(i).size();
+        }
 
-        return cityControl + unitAdvantage;
+        double unitDisadvantage = 0.25 - (enemyUnitsCount / game.getGameConfiguration().getUnitCap())*0.25;
+
+        double exploredMap = ((double) getKnownPositions().size()/(game.getGameConfiguration().getMapSize().getWidth()*game.getGameConfiguration().getMapSize().getHeight()))*0.25;
+
+        //log.debug("playerId: " + playerId + ", cityControl: " + cityControl + ", unitAdvantage: " + unitAdvantage);
+
+        return cityControl + unitAdvantage + unitDisadvantage + exploredMap;
     }
 
     private void backPropagation(Tree<GameStateNode<EmpireEvent>> tree, boolean[] winners) {
@@ -625,6 +636,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     }
 
     private Deque<EmpireEvent> executeNextCommands(GameStateNode<EmpireEvent> gameStateNode) {
+        log.trace("executeNextCommands() start");
 
         //log.info("Executing next command from queue");
 
@@ -675,7 +687,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     Command<EmpireEvent> command = queue.poll();
 
                     if(command == null || command.getActions() == null || command.getActions().isEmpty()){
-                        log.warn("HUGO command of queue was empty or null = " + command);
+                        log.warn("command of queue was empty or null = " + command);
                         continue;
                     }
 
@@ -745,7 +757,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     EmpireEvent action = command.getActions().poll();
 
                     if (action == null) {
-                        log.warn("HUGO action of queue was empty or null = " + command);
+                        log.warn("action of queue was empty or null = " + command);
                         continue;
                     }
 
@@ -798,6 +810,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
         }
 
+        log.trace("executeNextCommands() end");
         return executedCommands;
     }
 

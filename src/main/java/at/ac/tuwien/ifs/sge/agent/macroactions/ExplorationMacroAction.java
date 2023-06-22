@@ -236,7 +236,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
         log.info("Selected Unit: "  + selectedUnit);
 
-        MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination,playerId, log, simulation,false);
+        MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination, playerId, log, simulation,false);
         actions.add(moveAction);
 
         return actions;
