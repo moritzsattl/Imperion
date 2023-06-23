@@ -6,7 +6,6 @@ import at.ac.tuwien.ifs.sge.agent.GameStateNode;
 import at.ac.tuwien.ifs.sge.agent.astar.AStar;
 import at.ac.tuwien.ifs.sge.agent.astar.AStarNode;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
@@ -44,7 +43,7 @@ public class MoveAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent>{
 
     @Override
     public Deque<MacroAction<EmpireEvent>> generateExecutableAction(Map<UUID, Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
-        return null;
+        throw new ExecutableActionFactoryException("Move Action doesn't support generateExecutableAction()");
     }
 
     public MacroActionType getType() {
@@ -61,7 +60,7 @@ public class MoveAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent>{
             //log.info("A Star starting");
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
             //log.info("A Star finishing");
-            AStarNode currentNode = aStar.findPath(simulation);
+            AStarNode currentNode = aStar.findPath();
             if(currentNode == null) return null;
 
             path = new ArrayDeque<>();

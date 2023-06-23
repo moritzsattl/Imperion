@@ -11,7 +11,6 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 import java.util.*;
 
 public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent> {
-    private final static List<EmpireCity> citiesAlreadyVisiting = new ArrayList<>();
     private final List<EmpireCity> emptyCitiesInSight;
 
     public ExpansionMacroAction(GameStateNode<EmpireEvent> gameStateNode, int playerId, Logger log, boolean simulation) {
@@ -57,23 +56,14 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
             throw new ExecutableActionFactoryException("No empty cities in sight.");
         }
 
-        // Units which are not busy (so no commands are scheduled or which are last unit on city tile)
-        ArrayList<EmpireUnit> notBusyUnits = new ArrayList<>();
-
         ArrayList<EmpireUnit> notBusyUnitsOnCities = new ArrayList<>();
 
         for (var unit: units) {
             var unitPosition = unit.getPosition();
             // Not busy units
             if((unitCommandQueues.get(unit.getId()) == null || unitCommandQueues.get(unit.getId()).isEmpty())){
-
-                if(!game.getCitiesByPosition().containsKey(unitPosition)){
-                    // Units which are not on cities
-                    notBusyUnits.add(unit);
-                }else{
-                    // Units on city
+                if(game.getCitiesByPosition().containsKey(unitPosition))
                     notBusyUnitsOnCities.add(unit);
-                }
             }
         }
 
@@ -118,9 +108,6 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
         // Step 3: Remove the selected units
         notBusyUnitsOnCities.removeAll(busyForProductionUnitsOnCity);
 
-        // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
-        notBusyUnits.addAll(notBusyUnitsOnCities);
-
         ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
 
         for (var unit : busyForProductionUnitsOnCity) {
@@ -138,7 +125,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
                 allUnitsExceptThoseLastOnCityAndThoseBusyExpanding.add(unit);
             }
         }
-        //log.info("All Units Except Those Last On City And Those Busy Expanding: " + allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
+        log.debug("All Units Except Those Last On City And Those Busy Expanding: " + allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
         // If there is a unit, then select one
         if(!allUnitsExceptThoseLastOnCityAndThoseBusyExpanding.isEmpty()){
             Object[] selectedPair = findClosestPair(emptyWhichAreNotAlreadyBeenVisited, allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
@@ -163,7 +150,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
 
             // Schedule production order
             if(unitOnCity != null) {
-                buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unitOnCity.getPosition()),unitOnCity, 1);
+                buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unitOnCity.getPosition()), 1);
                 actions.add(buildAction);
             }
 
