@@ -129,7 +129,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     @Override
     protected void onActionRejected(EmpireEvent action) {
         log.trace("onActionRejected()");
-        log.info(action + " failed");
+        log.debug(action + " failed");
         if (action instanceof CombatStartOrder cso) {
             var unitId = cso.getAttackerId();
             if(unitId != null) {
@@ -243,7 +243,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     actionType = Util.selectRandom(possibleActions.get(playerId));
                 }
 
-                log.info("action type selected: " + actionType);
+                //log.info("action type selected: " + actionType);
 
                 if(actionType != null){
                     try{
@@ -306,7 +306,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             log.printStackTrace(e);
         }
 
-        log.info(gameState.getGame().getBoard());
+        //log.info(gameState.getGame().getBoard());
 
         log.trace("simulation() end");
         return determineWinner(game);
@@ -444,11 +444,11 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         log.trace("addToCommandQueue start");
         Command<EmpireEvent> command;
         try {
-            log.info(macroAction);
+            log.debug(macroAction);
             command = new Command<>(macroAction, macroAction.getResponsibleActions(unitCommandQueues));
         } catch (ExecutableActionFactoryException e) {
-            log.warn(e);
-            log.warn(new ExecutableActionFactoryException("Command could not be build"));
+            log.debug(e);
+            log.debug(new ExecutableActionFactoryException("Command could not be build"));
             return;
         }
 
@@ -459,7 +459,10 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             // Check if city is not producing buildActions unit type, currently
             if (cityState.getOrDefault(pos, ImperionCityState.IDLE) != ImperionCityState.mapProductionUnitTypeToCityState(buildAction.getUnitTypeId())) {
                 if(cityCommandQueues.containsKey(buildAction.getEmpireCity().getPosition())){
-                    cityCommandQueues.get(buildAction.getEmpireCity().getPosition()).add(command);
+                    // If 5 build actions are active don't add more
+                    if(cityCommandQueues.get(buildAction.getEmpireCity().getPosition()).size() <= 4){
+                        cityCommandQueues.get(buildAction.getEmpireCity().getPosition()).add(command);
+                    }
                 }else{
                     Deque<Command<EmpireEvent>> queue = new ArrayDeque<>();
                     queue.add(command);
@@ -655,7 +658,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                         }
 
                         if(action != null){
-                            log.warn("sending actions  (combat:executeNextCommands())");
+                            log.debug("sending actions  (combat:executeNextCommands())");
                             sendAction(action, System.currentTimeMillis() + offset);
                             executedCommands.add(action);
                             sentFightAction = true;
@@ -685,7 +688,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                             Command<EmpireEvent> command = queue.poll();
 
                             if(command == null || command.getActions() == null || command.getActions().isEmpty()){
-                                log.warn("command of queue was empty or null = " + command);
+                                log.debug("command of queue was empty or null = " + command);
                                 continue;
                             }
 
@@ -755,12 +758,12 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                             EmpireEvent action = command.getActions().poll();
 
                             if (action == null) {
-                                log.warn("action of queue was empty or null = " + command);
+                                log.debug("action of queue was empty or null = " + command);
                                 continue;
                             }
 
 
-                            log.warn("sending actions (unit:executeNextCommands())");
+                            //log.warn("sending actions (unit:executeNextCommands())");
                             sendAction(action,System.currentTimeMillis() + offset);
                             executedCommands.add(action);
                             offset++;
@@ -803,7 +806,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     action = command.getActions().poll();
 
                     executedCommands.add(action);
-                    log.warn("sending actions (city:executeNextCommands())");
+                    log.debug("sending actions (city:executeNextCommands())");
                     sendAction(action,System.currentTimeMillis() + offset);
                     // Set city state to production type
                     cityState.put(cityPos,ImperionCityState.mapProductionUnitTypeToCityState(buildAction.getUnitTypeId()));
@@ -917,10 +920,10 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 // Apply event
                 int c = 1;
                 if(lastExecutedCommands != null && !lastExecutedCommands.isEmpty()){
-                    log.info("Actually Scheduled Actions");
+                    log.debug("Actually Scheduled Actions");
                     for (var action : lastExecutedCommands) {
                         if(action != null) {
-                            log.info(action);
+                            log.debug(action);
                             gameState.scheduleActionEvent(new GameActionEvent<>(playerId, action, gameState.getGameClock().getGameTimeMs() + c));
                             c++;
 
@@ -928,7 +931,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                                 // At this point in time the next best actions will be sent
                                 gameState.advance((DEFAULT_DECISION_PACE_MS + MACRO_ACTION_CALCULATIONS_TIME) / lastExecutedCommands.size());
                             } catch (ActionException e) {
-                                log.info(e);
+                                log.debug(e);
                             }
                         }
                     }
@@ -937,7 +940,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                         // At this point in time the next best actions will be sent
                         gameState.advance(DEFAULT_DECISION_PACE_MS + MACRO_ACTION_CALCULATIONS_TIME);
                     } catch (ActionException e) {
-                        log.info(e);
+                        log.debug(e);
                     }
                 }
 
@@ -978,7 +981,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     iterations++;
                 }
 
-                log.info("MCTS Done");
+                //log.info("MCTS Done");
 
                 now = System.currentTimeMillis();
                 var timeOfNextDecision = now + MACRO_ACTION_CALCULATIONS_TIME;
@@ -1020,21 +1023,21 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 //    }
                 //}
 
-                for (var city :
-                        cityCommandQueue.keySet()) {
-                    log._info_();
-                    if(!cityCommandQueue.get(city).isEmpty()){
-                        log.info("Commands in queue for " + city);
-                        for (Command<EmpireEvent> command: cityCommandQueue.get(city)) {
-                            log.info(command);
-                        }
-                    }
-                }
+                //for (var city :
+                //        cityCommandQueue.keySet()) {
+                //    log._info_();
+                //    if(!cityCommandQueue.get(city).isEmpty()){
+                //        log.info("Commands in queue for " + city);
+                //        for (Command<EmpireEvent> command: cityCommandQueue.get(city)) {
+                //            log.info(command);
+                //        }
+                //    }
+                //}
 
-                log._info_();
-                log.info("Cities To Unit Type Producing");
-                log.info(cityState);
-                log._info_();
+                //log._info_();
+                //log.info("Cities To Unit Type Producing");
+                //log.info(cityState);
+                //log._info_();
 
                 //log._info_();
                 //log.info("Unit States");
@@ -1048,11 +1051,11 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 // Executes for each unit there next actions in their own unit action command queue
                 lastExecutedCommands = executeNextCommands(new GameStateNode<>((Empire)game.copy(),null));
                 turnsPassed++;
-                log.info("Time passed in this turn: " + (System.currentTimeMillis() - startTime));
+                //log.info("Time passed in this turn: " + (System.currentTimeMillis() - startTime));
 
             } catch (ActionException e) {
                 // Action weren't yet validated, try again
-                log.info(e);
+                log.debug(e);
             } catch (OutOfMemoryError e) {
                 log.info("Out of Memory");
                 break;
