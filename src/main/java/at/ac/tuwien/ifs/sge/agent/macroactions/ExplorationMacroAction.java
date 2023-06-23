@@ -162,7 +162,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
         // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
         notBusyUnits.addAll(notBusyUnitsOnCities);
-        log.debug("Not busy units: " + notBusyUnits);
+        if (notBusyUnits.size()>0) log.debug("Not busy units: " + notBusyUnits);
 
 
         ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
@@ -236,7 +236,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
         log.info("Selected Unit: "  + selectedUnit);
 
-        MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination,playerId, log, simulation,false);
+        MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination, playerId, log, simulation,false);
         actions.add(moveAction);
 
         return actions;
