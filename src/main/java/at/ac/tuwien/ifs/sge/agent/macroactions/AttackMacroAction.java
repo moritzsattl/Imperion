@@ -154,13 +154,16 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
         }
 
         // Get army
-        Stack<EmpireUnit> armyUnits = new Stack<>();
+        Stack<EmpireUnit> cavalries = new Stack<>();
         for (var unit : allUnitsExceptThoseLastOnCityAndThoseBusyExpanding) {
-            armyUnits.add(unit);
+            if(unit.getUnitTypeName().equals("Cavalry")){
+                cavalries.add(unit);
+            }
+
         }
 
         // If no cavalries, just send build orders
-        if(armyUnits.isEmpty()){
+        if(cavalries.isEmpty()){
             return actions;
         }
 
@@ -201,7 +204,7 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
             int unitsToSend = enemyGroup.size() + 1;
 
             // Sort cavalries based on the getEuclideanDistance from each unit to enemyGroup.getPosition()
-            Collections.sort(armyUnits, (c1, c2) -> {
+            Collections.sort(cavalries, (c1, c2) -> {
                 Position enemyPos = enemyGroup.get(0).getPosition();
 
                 double dist1 = getEuclideanDistance(c1.getPosition(), enemyPos);
@@ -211,15 +214,28 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
             });
 
             // Select the closest units and give them an attack order
-            for (int i = 0; i < unitsToSend && i < armyUnits.size(); i++) {
-                EmpireUnit unit = armyUnits.get(i);
+            for (int i = 0; i < unitsToSend && i < cavalries.size(); i++) {
+                EmpireUnit unit = cavalries.get(i);
                 AttackAction<EmpireEvent> moveAction = new AttackAction<>(gameStateNode,playerId,MacroActionType.ATTACK,log,simulation,unit,enemyGroup.get(0),true);
                 unitsWhichHaveAnAttackOrder.add(unit);
                 actions.add(moveAction);
             }
 
             // Remove the units which have been given an attack order from the cavalries list
-            armyUnits.removeAll(unitsWhichHaveAnAttackOrder);
+            cavalries.removeAll(unitsWhichHaveAnAttackOrder);
+        }
+
+
+        List<EmpireUnit> largestEnemyGroup = Collections.max(enemyGroups, Comparator.comparing(List::size));
+
+        // Handling the remaining cavalries
+        if (!cavalries.isEmpty()) {
+            EmpireUnit unitInLargestEnemyGroup = largestEnemyGroup.get(0);
+
+            for (var cavalry : cavalries) {
+                AttackAction<EmpireEvent> moveAction = new AttackAction<>(gameStateNode, playerId, MacroActionType.ATTACK, log, simulation, cavalry, unitInLargestEnemyGroup, true);
+                actions.add(moveAction);
+            }
         }
 
 

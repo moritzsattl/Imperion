@@ -22,6 +22,7 @@ import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireTerrain;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
+import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnitState;
 
 import java.util.*;
 import java.util.concurrent.Future;
@@ -39,7 +40,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     private static final double DEFAULT_EXPLOITATION_CONSTANT = Math.sqrt(2);
     private static final int DEFAULT_SIMULATION_PACE_MS = 1250;
     private static final int DEFAULT_SIMULATION_DEPTH = 20;
-    private static final int DEFAULT_DECISION_PACE_MS = 1900;
+    private static final int DEFAULT_DECISION_PACE_MS = 650;
 
     private static final int MACRO_ACTION_CALCULATIONS_TIME = 100;
 
@@ -702,60 +703,65 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 log.debug(unitID + "not found, skipping");
                 continue;
             }
-
             boolean sentFightAction = false;
-            // If combat possible then fight
-            try {
-                var pos = gameStateNode.getGame().getUnit(unitID).getPosition();
-                if(gameStateNode.getGame().getBoard().getTile(pos) != null && gameStateNode.getGame().getBoard().getTile(pos).getOccupants() != null ){
-                    var actions = gameStateNode.getGame().getBoard().getPossibleActions(gameStateNode.getGame().getUnit(unitID));
+            if(game.getUnit(unitID).getState() != EmpireUnitState.Fighting){
+                // If combat possible then fight
+                try {
+                    var pos = gameStateNode.getGame().getUnit(unitID).getPosition();
+                    if(gameStateNode.getGame().getBoard().getTile(pos) != null && gameStateNode.getGame().getBoard().getTile(pos).getOccupants() != null ){
+                        var actions = gameStateNode.getGame().getBoard().getPossibleActions(gameStateNode.getGame().getUnit(unitID));
 
-                    var combatActions = new ArrayList<CombatStartOrder>();
-                    for (var action : actions) {
-                        if (action instanceof  CombatStartOrder cso) combatActions.add(cso);
-                    }
-
-                    log.info("possible combat actions for unit " + gameStateNode.getGame().getUnit(unitID));
-                    log.info(combatActions);
-
-
-
-                    EmpireEvent action = null;
-                    if(combatActions.size() != 0){
-                        action = Util.selectRandom(combatActions);
-                    }
-
-                    if(action != null){
-                        log.warn("sending actions  (combat:executeNextCommands())");
-                        sendAction(action, System.currentTimeMillis() + offset);
-                        executedCommands.add(action);
-                        sentFightAction = true;
-                        offset++;
-                    }
-                }
-
-            } catch (EmpireMapException e) {
-                log.info(e);
-            }
-
-            if (unitState.getOrDefault(unitID, ImperionUnitState.IDLE) == ImperionUnitState.IDLE
-                /*&& (turnsPassed % 2 == 0 || (gameStateNode.getGame().getUnit(unitID) != null && gameStateNode.getGame().getUnit(unitID).getUnitTypeName().equals("Scout"))*/
-            ){
-
-                if(!sentFightAction){
-                    Deque<Command<EmpireEvent>> queue = unitCommandQueues.get(unitID);
-
-                    if (queue.isEmpty()) unitState.put(unitID, ImperionUnitState.IDLE);
-
-                    if (!queue.isEmpty()) {
-                        Command<EmpireEvent> command = queue.poll();
-
-                        if(command == null || command.getActions() == null || command.getActions().isEmpty()){
-                            log.warn("command of queue was empty or null = " + command);
-                            continue;
+                        var combatActions = new ArrayList<CombatStartOrder>();
+                        for (var action : actions) {
+                            if (action instanceof  CombatStartOrder cso) combatActions.add(cso);
                         }
 
-                        //TODO: Add check if another ally is also going to the same tile, then take another path
+                        //log.info("possible combat actions for unit " + gameStateNode.getGame().getUnit(unitID));
+                        //log.info(combatActions);
+
+
+
+                        EmpireEvent action = null;
+                        if(combatActions.size() != 0){
+                            action = Util.selectRandom(combatActions);
+                        }
+
+                        if(action != null){
+                            log.warn("sending actions  (combat:executeNextCommands())");
+                            sendAction(action, System.currentTimeMillis() + offset);
+                            executedCommands.add(action);
+                            sentFightAction = true;
+                            offset++;
+                        }
+                    }
+
+                } catch (EmpireMapException e) {
+                    log.info(e);
+                }
+
+                if (unitState.getOrDefault(unitID, ImperionUnitState.IDLE) == ImperionUnitState.IDLE
+                        &&
+                        (turnsPassed % 2 == 0 && gameStateNode.getGame().getUnit(unitID).getUnitTypeName().equals("Scout")
+                        ||
+                        turnsPassed % 3 == 0 && gameStateNode.getGame().getUnit(unitID).getUnitTypeName().equals("Cavalry")
+                        ||
+                        turnsPassed % 4 == 0 && gameStateNode.getGame().getUnit(unitID).getUnitTypeName().equals("Infantry"))
+                ) {
+
+                    if(!sentFightAction){
+                        Deque<Command<EmpireEvent>> queue = unitCommandQueues.get(unitID);
+
+                        if (queue.isEmpty()) unitState.put(unitID, ImperionUnitState.IDLE);
+
+                        if (!queue.isEmpty()) {
+                            Command<EmpireEvent> command = queue.poll();
+
+                            if(command == null || command.getActions() == null || command.getActions().isEmpty()){
+                                log.warn("command of queue was empty or null = " + command);
+                                continue;
+                            }
+
+                            //TODO: Add check if another ally is also going to the same tile, then take another path
                     /*
                     EmpireEvent action = command.getActions().peek();
 
@@ -818,28 +824,31 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     }
                      */
 
-                        EmpireEvent action = command.getActions().poll();
+                            EmpireEvent action = command.getActions().poll();
 
-                        if (action == null) {
-                            log.warn("action of queue was empty or null = " + command);
-                            continue;
+                            if (action == null) {
+                                log.warn("action of queue was empty or null = " + command);
+                                continue;
+                            }
+
+
+                            log.warn("sending actions (unit:executeNextCommands())");
+                            sendAction(action,System.currentTimeMillis() + offset);
+                            executedCommands.add(action);
+                            offset++;
+
+                            // Set unit state to be busy
+                            unitState.put(unitID, ImperionUnitState.BUSY);
+
+                            // Add command back to queue
+                            queue.addFirst(command);
                         }
-
-
-                        log.warn("sending actions (unit:executeNextCommands())");
-                        sendAction(action,System.currentTimeMillis() + offset);
-                        executedCommands.add(action);
-                        offset++;
-
-                        // Set unit state to be busy
-                        unitState.put(unitID, ImperionUnitState.BUSY);
-
-                        // Add command back to queue
-                        queue.addFirst(command);
                     }
+
                 }
 
             }
+
 
         }
 
@@ -1073,15 +1082,15 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                     }
                 }
 
-                for (var unitId : unitCommandQueues.keySet()) {
-                    log._info_();
-                    if(gameState.getUnit(unitId) != null && !unitCommandQueues.get(unitId).isEmpty()) {
-                        log.info("Commands in queue for " + gameState.getUnit(unitId));
-                        for (Command<EmpireEvent> command : unitCommandQueues.get(unitId)) {
-                            log.info(command);
-                        }
-                    }
-                }
+                //for (var unitId : unitCommandQueues.keySet()) {
+                //    log._info_();
+                //    if(gameState.getUnit(unitId) != null && !unitCommandQueues.get(unitId).isEmpty()) {
+                //        log.info("Commands in queue for " + gameState.getUnit(unitId));
+                //        for (Command<EmpireEvent> command : unitCommandQueues.get(unitId)) {
+                //            log.info(command);
+                //        }
+                //    }
+                //}
 
                 for (var city :
                         cityCommandQueue.keySet()) {
@@ -1099,10 +1108,10 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 log.info(cityState);
                 log._info_();
 
-                log._info_();
-                log.info("Unit States");
-                log.info(unitState);
-                log._info_();
+                //log._info_();
+                //log.info("Unit States");
+                //log.info(unitState);
+                //log._info_();
 
                 var remainingTime = timeOfNextDecision - System.currentTimeMillis();
                 if (remainingTime > 0)
