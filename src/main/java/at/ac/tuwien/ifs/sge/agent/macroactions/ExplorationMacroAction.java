@@ -3,7 +3,6 @@ package at.ac.tuwien.ifs.sge.agent.macroactions;
 import at.ac.tuwien.ifs.sge.agent.*;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.core.util.Util;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
@@ -220,7 +219,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
             // Schedule production order
             if(unitOnCity != null) {
-                buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unitOnCity.getPosition()),unitOnCity, 2);
+                buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unitOnCity.getPosition()), 2);
                 actions.add(buildAction);
             }
 

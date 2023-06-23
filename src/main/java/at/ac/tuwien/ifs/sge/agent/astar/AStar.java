@@ -2,7 +2,6 @@ package at.ac.tuwien.ifs.sge.agent.astar;
 
 import at.ac.tuwien.ifs.sge.agent.GameStateNode;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
-import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 import at.ac.tuwien.ifs.sge.game.empire.map.EmpireMap;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 
@@ -10,16 +9,16 @@ import java.util.*;
 
 public class AStar {
 
-    private AStarNode endNode;
-    private TreeSet<AStarNode> openList;
-    private HashSet<AStarNode> openSet;
-    private boolean[][] closedList;
-    private int[][] gCosts;
-    private int[][] hCosts;
+    private final AStarNode endNode;
+    private final TreeSet<AStarNode> openList;
+    private final HashSet<AStarNode> openSet;
+    private final boolean[][] closedList;
+    private final int[][] gCosts;
+    private final int[][] hCosts;
 
-    private EmpireMap map;
-    private int playerId;
-    private Logger log;
+    private final EmpireMap map;
+    private final int playerId;
+    private final Logger log;
 
     public <A> AStar(Position startPos, Position endPos, GameStateNode<A> gameStateNode, int playerId, Logger log) {
         map = gameStateNode.getGame().getBoard();
@@ -27,7 +26,7 @@ public class AStar {
         //if(map == null){
         //    log.info("Map in AStar is null");
         //}
-        Comparator<AStarNode> comparator = Comparator.comparingInt(AStarNode::getfCost);
+        Comparator<AStarNode> comparator = Comparator.comparingInt(AStarNode::getTfCost);
         openList = new TreeSet<>(comparator);
         openSet = new HashSet<>();
 
@@ -50,7 +49,7 @@ public class AStar {
         this.log = log;
     }
 
-    public AStarNode findPath(boolean simulation) {
+    public AStarNode findPath() {
         while (!openList.isEmpty()) {
             AStarNode currentNode = openList.pollFirst();
             if (currentNode == null) return null;

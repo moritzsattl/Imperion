@@ -12,16 +12,13 @@ public enum ImperionCityState {
         this.displayName = displayName;
     }
     public static ImperionCityState mapProductionUnitTypeToCityState(int unitTypeId){
-        switch (unitTypeId){
-            case 1:
-                return INFANTRY;
-            case 2:
-                return SCOUT;
-            case 3:
-                return CAVALRY;
-        }
+        return switch (unitTypeId) {
+            case 1 -> INFANTRY;
+            case 2 -> SCOUT;
+            case 3 -> CAVALRY;
+            default -> IDLE;
+        };
 
-        return IDLE;
     }
 
     @Override
