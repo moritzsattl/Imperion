@@ -6,7 +6,7 @@ import java.util.Objects;
 
 public class AStarNode implements Comparable<AStarNode> {
 
-    private Position position;
+    private final Position position;
 
     private int tfCost,thCost = 0;
 
@@ -28,11 +28,11 @@ public class AStarNode implements Comparable<AStarNode> {
         return position.getY();
     }
 
-    public int gethCosts() {
+    public int getThCost() {
         return thCost;
     }
 
-    public int getfCost() {
+    public int getTfCost() {
         return tfCost;
     }
 
@@ -61,19 +61,13 @@ public class AStarNode implements Comparable<AStarNode> {
 
     @Override
     public int compareTo(AStarNode otherNode) {
-        if (this.getfCost() < otherNode.getfCost()) {
+        if (this.getTfCost() < otherNode.getTfCost()) {
             return -1;
-        } else if (this.getfCost() > otherNode.getfCost()) {
+        } else if (this.getTfCost() > otherNode.getTfCost()) {
             return 1;
         } else {
             // If the fCost is equal, compare based on hCost (tie-breaker)
-            if (this.gethCosts() < otherNode.gethCosts()) {
-                return -1;
-            } else if (this.gethCosts() > otherNode.gethCosts()) {
-                return 1;
-            } else {
-                return 0;
-            }
+            return Integer.compare(this.getThCost(), otherNode.getThCost());
         }
     }
 

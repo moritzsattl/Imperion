@@ -3,13 +3,10 @@ package at.ac.tuwien.ifs.sge.agent.macroactions;
 import at.ac.tuwien.ifs.sge.agent.Command;
 import at.ac.tuwien.ifs.sge.agent.ExecutableActionFactoryException;
 import at.ac.tuwien.ifs.sge.agent.GameStateNode;
-import at.ac.tuwien.ifs.sge.agent.Imperion;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
 import at.ac.tuwien.ifs.sge.core.util.Util;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
-import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireProductionState;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnit;
 
 import java.util.*;
@@ -39,17 +36,6 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
             throw new ExecutableActionFactoryException("No enemy units in sight");
         }
 
-
-        ArrayList<EmpireCity> ourCities = new ArrayList<>();
-
-        // Order build action for all of cities
-        for (var cityPos :game.getCitiesByPosition().keySet()) {
-            if(game.getCity(cityPos).getPlayerId() == playerId){
-                ourCities.add(game.getCity(cityPos));
-            }
-        }
-
-
         List<EmpireUnit> busyWithExpandingUnits = new ArrayList<>();
         // Get empty cities
         for (var city: emptyCitiesInSight) {
@@ -66,22 +52,14 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
         }
 
         // Units which are not busy (so no commands are scheduled or which are last unit on city tile)
-        ArrayList<EmpireUnit> notBusyUnits = new ArrayList<>();
-
         ArrayList<EmpireUnit> notBusyUnitsOnCities = new ArrayList<>();
 
         for (var unit: units) {
             var unitPosition = unit.getPosition();
             // Not busy units
             if((unitCommandQueues.get(unit.getId()) == null || unitCommandQueues.get(unit.getId()).isEmpty())){
-
-                if(!game.getCitiesByPosition().containsKey(unitPosition)){
-                    // Units which are not on cities
-                    notBusyUnits.add(unit);
-                }else{
-                    // Units on city
+                if(game.getCitiesByPosition().containsKey(unitPosition))
                     notBusyUnitsOnCities.add(unit);
-                }
             }
         }
 
@@ -126,18 +104,6 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
         // Step 3: Remove the selected units
         notBusyUnitsOnCities.removeAll(busyForProductionUnitsOnCity);
 
-        // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
-        notBusyUnits.addAll(notBusyUnitsOnCities);
-
-        ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
-
-        for (var unit : busyForProductionUnitsOnCity) {
-            // Cities with units on it, which are not producing
-            if(game.getCity(unit.getPosition()).getState() == EmpireProductionState.Idle){
-                // Unit has to be added instead of city, because build action need units as parameter
-                busyForProductionUnitsOnCitiesWhichAreNotProducing.add(unit);
-            }
-        }
 
         List<EmpireUnit> allUnitsExceptThoseLastOnCityAndThoseBusyExpanding = new ArrayList<>();
 
@@ -149,15 +115,13 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
 
         for (var unit :
                 busyForProductionUnitsOnCity) {
-            BuildAction<EmpireEvent> buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unit.getPosition()),unit, 3);
+            BuildAction<EmpireEvent> buildAction = new BuildAction<>(gameStateNode,playerId,log,simulation,game.getCity(unit.getPosition()), 3);
             actions.add(buildAction);
         }
 
         // Get army
         Stack<EmpireUnit> armyUnits = new Stack<>();
-        for (var unit : allUnitsExceptThoseLastOnCityAndThoseBusyExpanding) {
-            armyUnits.add(unit);
-        }
+        armyUnits.addAll(allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
 
         // If no cavalries, just send build orders
         if(armyUnits.isEmpty()){
@@ -197,11 +161,11 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
         ArrayList<EmpireUnit> unitsWhichHaveAnAttackOrder = new ArrayList<>();
         for (var enemyGroup :
                 enemyGroups) {
-            // Send one more unit then enemies are there
+            // Send one more unit than enemies are there
             int unitsToSend = enemyGroup.size() + 1;
 
             // Sort cavalries based on the getEuclideanDistance from each unit to enemyGroup.getPosition()
-            Collections.sort(armyUnits, (c1, c2) -> {
+            armyUnits.sort((c1, c2) -> {
                 Position enemyPos = enemyGroup.get(0).getPosition();
 
                 double dist1 = getEuclideanDistance(c1.getPosition(), enemyPos);

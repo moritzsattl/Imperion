@@ -15,12 +15,12 @@ import java.util.*;
 
 public class DeterminizedEmpireMapFactory {
 
-    private Empire game;
-    private Map<Character, EmpireTerrainType> terrainDictionary;
-    private Set<Position> knownPositions;
+    private final Empire game;
+    private final Map<Character, EmpireTerrainType> terrainDictionary;
+    private final Set<Position> knownPositions;
 
-    private HashMap<EmpireUnit, LastSeenInfo> enemyUnitsLastSeen;
-    private EmpireConfiguration config;
+    private final HashMap<EmpireUnit, LastSeenInfo> enemyUnitsLastSeen;
+    private final EmpireConfiguration config;
 
     public DeterminizedEmpireMapFactory(Empire game,Set<Position> knownPositions, HashMap<EmpireUnit, LastSeenInfo> enemyUnitsLastSeen) {
         this.game = game;
@@ -123,7 +123,7 @@ public class DeterminizedEmpireMapFactory {
                     double cityProb = cityProbabilityFunction(pos);
 
                     // Generate a random number between 0 and 1
-                    Double rand = random.nextDouble();
+                    double rand = random.nextDouble();
 
                     // Assign the tile based on the probabilities
                     if (rand <= cityProb) {
@@ -141,8 +141,8 @@ public class DeterminizedEmpireMapFactory {
                         for (EmpireUnit enemyUnit : enemyUnitsLastSeen.keySet()) {
                             if(!alreadyPlaced.contains(enemyUnit.getId())){
                                 LastSeenInfo lastSeenInfo = enemyUnitsLastSeen.get(enemyUnit);
-                                double distanceToTile = Imperion.getEuclideanDistance(lastSeenInfo.getPosition(), pos);
-                                long secondsPassed = (game.getGameClock().getGameDurationMs() - lastSeenInfo.getTimeStamp()) / 1000;
+                                double distanceToTile = Imperion.getEuclideanDistance(lastSeenInfo.position(), pos);
+                                long secondsPassed = (game.getGameClock().getGameDurationMs() - lastSeenInfo.timeStamp()) / 1000;
 
                                 // Check if the enemy unit could have reached the tile based on its speed
                                 if (distanceToTile <= secondsPassed * enemyUnit.getTilesPerSecond()) {
