@@ -60,7 +60,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
     private int turnsPassed = 0;
 
-    private static int LOG_LEVEL = -1;
+    private static int LOG_LEVEL = -2;
 
     public Imperion(int playerId, String playerName) {
         super(Empire.class,playerId, playerName, LOG_LEVEL);
@@ -346,10 +346,10 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 ourCities.add(game.getCity(cityPos));
             }
         }
-        double cityControl = (1.0-(1.0/(ourCities.size()+1)))*0.25;
+        double cityControl = (1.0-(1.0/(ourCities.size()+1)))*0.30;
 
         double unitCount = game.getUnitsByPlayer(playerId).size();
-        double unitAdvantage = (unitCount / game.getGameConfiguration().getUnitCap())*0.25;
+        double unitAdvantage = (unitCount / game.getGameConfiguration().getUnitCap())*0.30;
 
         double enemyUnitsCount = 0;
         for (int i = 0; i < game.getNumberOfPlayers(); i++) {
@@ -357,9 +357,10 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
             enemyUnitsCount += game.getUnitsByPlayer(i).size();
         }
 
-        double unitDisadvantage = 0.25 - (enemyUnitsCount / game.getGameConfiguration().getUnitCap())*0.25;
+        double unitDisadvantage = 0.25 - (enemyUnitsCount / (game.getGameConfiguration().getUnitCap())*(game.getNumberOfPlayers()-1))*0.25;
 
-        double exploredMap = ((double) getKnownPositions().size()/(game.getGameConfiguration().getMapSize().getWidth()*game.getGameConfiguration().getMapSize().getHeight()))*0.25;
+        double mapSize = game.getGameConfiguration().getMapSize().getWidth()*game.getGameConfiguration().getMapSize().getHeight();
+        double exploredMap = ((Math.log((double) getKnownPositions().size()/mapSize) + 10) / 10) * 0.15;
 
         //log.debug("playerId: " + playerId + ", cityControl: " + cityControl + ", unitAdvantage: " + unitAdvantage);
 
