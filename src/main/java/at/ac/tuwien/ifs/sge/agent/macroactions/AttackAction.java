@@ -7,7 +7,6 @@ import at.ac.tuwien.ifs.sge.agent.Imperion;
 import at.ac.tuwien.ifs.sge.agent.astar.AStar;
 import at.ac.tuwien.ifs.sge.agent.astar.AStarNode;
 import at.ac.tuwien.ifs.sge.core.engine.logging.Logger;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.exception.EmpireMapException;
 import at.ac.tuwien.ifs.sge.game.empire.map.Position;
@@ -18,18 +17,16 @@ import java.util.*;
 
 public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
 
-    private EmpireUnit unit;
-    private EmpireUnit enemyUnit;
-
-    private ArrayList<Position> possibleAttackingPositions;
+    private final EmpireUnit unit;
+    private final EmpireUnit enemyUnit;
 
     private Position attackingFrom;
 
     private Deque<EmpireEvent> path;
 
-    private MacroActionType macroType;
+    private final MacroActionType macroType;
 
-    private boolean force;
+    private final boolean force;
 
     public AttackAction(GameStateNode<EmpireEvent> gameStateNode, int playerId ,MacroActionType action, Logger log, boolean simulation, EmpireUnit unit, EmpireUnit enemyUnit, boolean force) {
         super(gameStateNode, playerId, log, simulation);
@@ -37,7 +34,6 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
         this.macroType = action;
         this.enemyUnit = enemyUnit;
         this.force = force;
-        possibleAttackingPositions = new ArrayList<>();
         this.path = null;
     }
 
@@ -64,7 +60,6 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
             try {
                 var tile = game.getBoard().getTile(pos.getX(),pos.getY());
                 if((tile != null && tile.getOccupants() != null && game.getBoard().isMovementPossible(pos.getX(),pos.getY(),playerId))){
-                    possibleAttackingPositions.add(pos);
                     double dist = Imperion.getEuclideanDistance(unit.getPosition(),pos);
                     //log.info("From unit to tile distance : " + dist);
                     if(dist < currentShortestDist){
@@ -86,12 +81,12 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
             throw new ExecutableActionFactoryException("No tile to attack from");
         }
 
-        //log.info("Attack from pos" + attackingFrom);
+        log.debug("Attack from pos" + attackingFrom);
 
         if(path == null) {
             AStar aStar = new AStar(unit.getPosition(),attackingFrom,gameStateNode,playerId, log);
             //log.info("Calculated Path: ");
-            AStarNode currentNode = aStar.findPath(simulation);
+            AStarNode currentNode = aStar.findPath();
             if(currentNode == null) return null;
 
             path = new ArrayDeque<>();

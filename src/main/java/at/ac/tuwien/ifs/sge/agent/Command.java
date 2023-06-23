@@ -1,24 +1,19 @@
 package at.ac.tuwien.ifs.sge.agent;
 
 import at.ac.tuwien.ifs.sge.agent.macroactions.MacroAction;
-import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
 
 import java.util.Deque;
 
 public class Command<EmpireEvent> {
 
+    private final MacroAction<EmpireEvent> macroAction;
 
-    private MacroAction<EmpireEvent> macroAction;
-
-    private Deque<EmpireEvent> actions;
+    private final Deque<EmpireEvent> actions;
 
 
     public Command(MacroAction<EmpireEvent> marcoAction, Deque<EmpireEvent> actions) {
         this.macroAction = marcoAction;
         this.actions = actions;
-    }
-
-    public Command() {
     }
 
     public MacroAction<EmpireEvent> getMacroAction() {
@@ -31,16 +26,14 @@ public class Command<EmpireEvent> {
 
     @Override
     public String toString() {
-        String actionsString = "{";
+        StringBuilder actionsString = new StringBuilder("{");
         if(actions != null){
             for (var event :
                     actions) {
-                actionsString += event +", ";
+                actionsString.append(event).append(", ");
             }
         }
-
-
-        actionsString += "}";
+        actionsString.append("}");
         
         return "Command{" +
                 "macroAction=" + macroAction +

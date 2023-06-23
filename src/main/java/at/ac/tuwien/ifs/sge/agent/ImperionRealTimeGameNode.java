@@ -32,14 +32,14 @@ class ImperionRealTimeGameNode<EmpireEvent> {
 
 
             boolean allUnitsMoving = true;
-            for (var unit : ((Empire) game).getUnitsByPlayer(playerId)) {
+            for (var unit : game.getUnitsByPlayer(playerId)) {
 
-                if(unitCommandQueues.get(unit) == null || unitCommandQueues.get(unit).peek() == null) {
+                if(unitCommandQueues.get(unit.getId()) == null || unitCommandQueues.get(unit.getId()).peek() == null) {
                     allUnitsMoving = false;
                     continue;
                 }
 
-                if(!(unitCommandQueues.get(unit).peek().getMacroAction() instanceof MoveAction<EmpireEvent>)){
+                if(!(Objects.requireNonNull(unitCommandQueues.get(unit.getId()).peek()).getMacroAction() instanceof MoveAction<EmpireEvent>)){
                     allUnitsMoving = false;
                 }
             }
@@ -83,7 +83,7 @@ class ImperionRealTimeGameNode<EmpireEvent> {
     }
 
     public List<EmpireCity> knownOtherCities(int playerId) {
-        var citiesMap = ((Empire) game).getCitiesByPosition();
+        var citiesMap = game.getCitiesByPosition();
         List<EmpireCity> cities = new ArrayList<>();
         for (var city: citiesMap.values()) {
             if (city.getPlayerId() != playerId) {
