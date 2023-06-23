@@ -154,21 +154,18 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
         }
 
         // Get army
-        Stack<EmpireUnit> cavalries = new Stack<>();
+        Stack<EmpireUnit> armyUnits = new Stack<>();
         for (var unit : allUnitsExceptThoseLastOnCityAndThoseBusyExpanding) {
-            if(unit.getUnitTypeName().equals("Cavalry")){
-                cavalries.add(unit);
-            }
+            armyUnits.add(unit);
         }
 
         // If no cavalries, just send build orders
-        if(cavalries.isEmpty()){
+        if(armyUnits.isEmpty()){
             return actions;
         }
 
 
         // Make groups of enemies with different strength levels (just number of units)
-        log.info("Enemies in Groups");
         int DISTANT_CONSTANT = 5;
         List<List<EmpireUnit>> enemyGroups = new ArrayList<>();
 
@@ -187,19 +184,24 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
             enemyGroups.add(enemyGroup);
         }
 
-        for (var enemyGroup :
-                enemyGroups) {
-            log.info(enemyGroup);
+        if(!simulation){
+            log.info("Enemies in Groups");
+            for (var enemyGroup :
+                    enemyGroups) {
+                log.info(enemyGroup);
+            }
         }
 
-        // Calc for each enemyGroup the nearest cavalries to go there
+
+        // Calc for each enemyGroup the nearest unit to go there
         ArrayList<EmpireUnit> unitsWhichHaveAnAttackOrder = new ArrayList<>();
         for (var enemyGroup :
                 enemyGroups) {
-            int unitsToSend = enemyGroup.size();
+            // Send one more unit then enemies are there
+            int unitsToSend = enemyGroup.size() + 1;
 
             // Sort cavalries based on the getEuclideanDistance from each unit to enemyGroup.getPosition()
-            Collections.sort(cavalries, (c1, c2) -> {
+            Collections.sort(armyUnits, (c1, c2) -> {
                 Position enemyPos = enemyGroup.get(0).getPosition();
 
                 double dist1 = getEuclideanDistance(c1.getPosition(), enemyPos);
@@ -209,15 +211,15 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
             });
 
             // Select the closest units and give them an attack order
-            for (int i = 0; i < unitsToSend && i < cavalries.size(); i++) {
-                EmpireUnit unit = cavalries.get(i);
+            for (int i = 0; i < unitsToSend && i < armyUnits.size(); i++) {
+                EmpireUnit unit = armyUnits.get(i);
                 AttackAction<EmpireEvent> moveAction = new AttackAction<>(gameStateNode,playerId,MacroActionType.ATTACK,log,simulation,unit,enemyGroup.get(0),true);
                 unitsWhichHaveAnAttackOrder.add(unit);
                 actions.add(moveAction);
             }
 
             // Remove the units which have been given an attack order from the cavalries list
-            cavalries.removeAll(unitsWhichHaveAnAttackOrder);
+            armyUnits.removeAll(unitsWhichHaveAnAttackOrder);
         }
 
 

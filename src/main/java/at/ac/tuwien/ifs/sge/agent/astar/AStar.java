@@ -24,18 +24,18 @@ public class AStar {
     public <A> AStar(Position startPos, Position endPos, GameStateNode<A> gameStateNode, int playerId, Logger log) {
         map = gameStateNode.getGame().getBoard();
 
-        if(map == null){
-            log.info("Map in AStar is null");
-        }
+        //if(map == null){
+        //    log.info("Map in AStar is null");
+        //}
         Comparator<AStarNode> comparator = Comparator.comparingInt(AStarNode::getfCost);
         openList = new TreeSet<>(comparator);
         openSet = new HashSet<>();
 
-        log.info("Starting Accessing map.getEmpireTiles() in A Star");
+        //log.info("Starting Accessing map.getEmpireTiles() in A Star");
         gCosts = new int[map.getEmpireTiles().length][map.getEmpireTiles()[0].length];
         hCosts = new int[map.getEmpireTiles().length][map.getEmpireTiles()[0].length];
         closedList = new boolean[map.getEmpireTiles().length][map.getEmpireTiles()[0].length];
-        log.info("Finished accessing map.getEmpireTiles() in A Star");
+        //log.info("Finished accessing map.getEmpireTiles() in A Star");
 
         AStarNode start = new AStarNode(startPos);
         endNode = new AStarNode(endPos);

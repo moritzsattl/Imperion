@@ -32,7 +32,11 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
         var firstUnitPosition = unitsByPlayer.get(0).getPosition();
         Set<Position> knownPositions = getKnownPositions(firstUnitPosition);
 
-        log.trace("Known Positions calced");
+        if(!simulation){
+            log.info(unitsByPlayer);
+        }
+
+        //log.trace("Known Positions calced");
 
         Stack<Position> unknownPositions = new Stack<>();
         for (int y = 0; y < game.getBoard().getEmpireTiles().length; y++) {
@@ -44,7 +48,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             }
         }
 
-        log.trace("Unknown Positions calced");
+        //log.trace("Unknown Positions calced");
 
         double FAR_EXPLORATION_CONSTANT = 0.6;
         Random rand = new Random();
@@ -72,7 +76,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             }
 
         }else {
-            log.info("All positions are known");
+            //log.info("All positions are known");
             // If all tiles are known, move towards an enemy city.
             Map<Position, EmpireCity> cities = game.getCitiesByPosition();
 
@@ -162,7 +166,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
         // Step 4: Add all notBusyUnitsOnCities to notBusyUnits
         notBusyUnits.addAll(notBusyUnitsOnCities);
-        if (notBusyUnits.size()>0) log.debug("Not busy units: " + notBusyUnits);
+        //if (notBusyUnits.size()>0) log.debug("Not busy units: " + notBusyUnits);
 
 
         ArrayList<EmpireUnit> busyForProductionUnitsOnCitiesWhichAreNotProducing = new ArrayList<>();
@@ -174,6 +178,11 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
                 busyForProductionUnitsOnCitiesWhichAreNotProducing.add(unit);
             }
         }
+
+        if(!simulation){
+            log.info("Not busy units:" + notBusyUnits);
+        }
+
 
 
         // Select scout unit
@@ -234,7 +243,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             throw new ExecutableActionFactoryException();
         }
 
-        log.info("Selected Unit: "  + selectedUnit);
+        //log.info("Selected Unit: "  + selectedUnit);
 
         MoveAction<EmpireEvent> moveAction = new MoveAction<>(gameStateNode, selectedUnit, MacroActionType.EXPLORATION, destination, playerId, log, simulation,false);
         actions.add(moveAction);
@@ -256,7 +265,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
 
 
     public Set<Position> getKnownPositions(Position start){
-        log.trace("geKnownPositions Start");
+        //log.trace("geKnownPositions Start");
         // Get valid and visible locations the unit can move to using the FloodFill Algorithm
         Set<Position> validLocations = new HashSet<>();
 
@@ -306,7 +315,7 @@ public class ExplorationMacroAction<EmpireEvent> extends AbstractMacroAction<Emp
             throw new NoSuchElementException();
         }
 
-        log.trace("geKnownPositions End");
+        //log.trace("geKnownPositions End");
         return validLocations;
     }
 
