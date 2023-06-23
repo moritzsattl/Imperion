@@ -59,13 +59,14 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
     @Override
     public Deque<EmpireEvent> getResponsibleActions(Map<UUID, Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
         double currentShortestDist = Double.MAX_VALUE;
+        //log.info("Attack Action, get all neighbour positions of enemy " + enemyUnit);
         for (var pos: enemyUnit.getPosition().getAllNeighbours()) {
-
             try {
                 var tile = game.getBoard().getTile(pos.getX(),pos.getY());
                 if((tile != null && tile.getOccupants() != null && game.getBoard().isMovementPossible(pos.getX(),pos.getY(),playerId))){
                     possibleAttackingPositions.add(pos);
-                    double dist = Imperion.getEuclideanDistance(game.getUnit(unit.getId()).getPosition(),pos);
+                    double dist = Imperion.getEuclideanDistance(unit.getPosition(),pos);
+                    //log.info("From unit to tile distance : " + dist);
                     if(dist < currentShortestDist){
                         currentShortestDist = dist;
                         attackingFrom = pos;
@@ -73,10 +74,19 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
 
                 }
             } catch (EmpireMapException e) {
-                throw new RuntimeException(e);
+                if(!simulation){
+                    log.info(e.getClass());
+                    log.info(e);
+                }
             }
         }
 
+
+        if(attackingFrom == null){
+            throw new ExecutableActionFactoryException("No tile to attack from");
+        }
+
+        //log.info("Attack from pos" + attackingFrom);
 
         if(path == null) {
             AStar aStar = new AStar(unit.getPosition(),attackingFrom,gameStateNode,playerId, log);
@@ -97,8 +107,6 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
         }
         path.poll();
 
-        log.info(path);
-
         if(path.isEmpty()){
             throw new ExecutableActionFactoryException("Path to " + attackingFrom + " was not found by unit " + unit);
         }
@@ -114,5 +122,13 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
                 ", attackingFrom=" + attackingFrom +
                 ", macroType=" + macroType +
                 '}';
+    }
+
+    public MacroActionType getMacroType() {
+        return macroType;
+    }
+
+    public EmpireUnit getEnemyUnit() {
+        return enemyUnit;
     }
 }

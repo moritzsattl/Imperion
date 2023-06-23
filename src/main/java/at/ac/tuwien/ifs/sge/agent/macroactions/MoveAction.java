@@ -58,9 +58,9 @@ public class MoveAction<EmpireEvent> extends AbstractMacroAction<EmpireEvent>{
     @Override
     public Deque<EmpireEvent> getResponsibleActions(Map<UUID,Deque<Command<EmpireEvent>>> unitsCommandQueues) throws ExecutableActionFactoryException {
         if(path == null){
-            log.info("A Star starting");
+            //log.info("A Star starting");
             AStar aStar = new AStar(unit.getPosition(),destination,gameStateNode,playerId, log);
-            log.info("A Star finishing");
+            //log.info("A Star finishing");
             AStarNode currentNode = aStar.findPath(simulation);
             if(currentNode == null) return null;
 

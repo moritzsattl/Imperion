@@ -27,7 +27,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
         EmpireCity selectedCity = null;
 
         // Find City to Expand to
-        log.debug("Not Friendly Cities: " + emptyCitiesInSight);
+        //log.debug("Not Friendly Cities: " + emptyCitiesInSight);
 
 
         List<EmpireUnit> busyWithExpandingUnits = new ArrayList<>();
@@ -51,7 +51,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
             }
         }
 
-        if (emptyWhichAreNotAlreadyBeenVisited.size()>0) log.debug("Empty Cities: " + emptyWhichAreNotAlreadyBeenVisited);
+        //if (emptyWhichAreNotAlreadyBeenVisited.size()>0) log.debug("Empty Cities: " + emptyWhichAreNotAlreadyBeenVisited);
 
         if (emptyWhichAreNotAlreadyBeenVisited.isEmpty()) {
             throw new ExecutableActionFactoryException("No empty cities in sight.");
@@ -138,7 +138,7 @@ public class ExpansionMacroAction<EmpireEvent> extends AbstractMacroAction<Empir
                 allUnitsExceptThoseLastOnCityAndThoseBusyExpanding.add(unit);
             }
         }
-        log.info("All Units Except Those Last On City And Those Busy Expanding: " + allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
+        //log.info("All Units Except Those Last On City And Those Busy Expanding: " + allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
         // If there is a unit, then select one
         if(!allUnitsExceptThoseLastOnCityAndThoseBusyExpanding.isEmpty()){
             Object[] selectedPair = findClosestPair(emptyWhichAreNotAlreadyBeenVisited, allUnitsExceptThoseLastOnCityAndThoseBusyExpanding);
