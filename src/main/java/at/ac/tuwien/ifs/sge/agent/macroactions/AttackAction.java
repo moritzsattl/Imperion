@@ -31,7 +31,7 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
 
     private boolean force;
 
-    public AttackAction(GameStateNode<EmpireEvent> gameStateNode, int playerId,MacroActionType action, Logger log, boolean simulation, EmpireUnit unit, EmpireUnit enemyUnit, boolean force) {
+    public AttackAction(GameStateNode<EmpireEvent> gameStateNode, int playerId ,MacroActionType action, Logger log, boolean simulation, EmpireUnit unit, EmpireUnit enemyUnit, boolean force) {
         super(gameStateNode, playerId, log, simulation);
         this.unit = unit;
         this.macroType = action;
@@ -48,6 +48,13 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
     public EmpireUnit getUnit() {
         return unit;
     }
+    public UUID getUnitId() {
+        return unit.getId();
+    }
+    public boolean isWon() {
+        return unit.isAlive() && !enemyUnit.isAlive();
+    }
+    public boolean unitDied() { return !unit.isAlive(); }
 
     @Override
     public Deque<EmpireEvent> getResponsibleActions(Map<UUID, Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
@@ -71,7 +78,7 @@ public class AttackAction<EmpireEvent> extends AttackMacroAction<EmpireEvent>{
         }
 
 
-        if(path == null){
+        if(path == null) {
             AStar aStar = new AStar(unit.getPosition(),attackingFrom,gameStateNode,playerId, log);
             //log.info("Calculated Path: ");
             AStarNode currentNode = aStar.findPath(simulation);
