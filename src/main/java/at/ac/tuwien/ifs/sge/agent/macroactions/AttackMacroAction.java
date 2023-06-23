@@ -227,6 +227,19 @@ public class AttackMacroAction<EmpireEvent> extends AbstractMacroAction<EmpireEv
 
     @Override
     public Deque<EmpireEvent> getResponsibleActions(Map<UUID, Deque<Command<EmpireEvent>>> unitCommandQueues) throws ExecutableActionFactoryException {
-        return null;
+        Deque<MacroAction<EmpireEvent>> executable = generateExecutableAction(unitCommandQueues);
+        Deque<EmpireEvent> events = new LinkedList<>();
+        if (executable != null) {
+            while (!executable.isEmpty()){
+                MacroAction<EmpireEvent> action = executable.poll();
+                Deque<EmpireEvent> empireEvents =  action.getResponsibleActions(unitCommandQueues);
+                while (!empireEvents.isEmpty()) {
+                    events.add(empireEvents.poll());
+                }
+            }
+        }
+        return events;
     }
+
+
 }
