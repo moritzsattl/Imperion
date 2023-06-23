@@ -107,11 +107,11 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     protected void onGameUpdate(EmpireEvent action, ActionResult result) {
         log.trace("onGameUpdate()");
         if(action instanceof ProductionAction productionAction){
-            log.info(productionAction);
+            //log.info(productionAction);
             cityState.put(productionAction.getCityPosition(), ImperionCityState.IDLE);
         }
         if(action instanceof MovementAction movementAction){
-            log.info(movementAction);
+            //log.info(movementAction);
             unitState.put(movementAction.getUnitId(), ImperionUnitState.IDLE);
         }
 
