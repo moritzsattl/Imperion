@@ -1,2 +1,2 @@
-rm "C:\Users\Moritz\OneDrive - TU Wien\Studium\S23\SGP\Empire\binaries\agents\Imperion-*.jar"
-mv build/libs/Imperion-*-exe.jar "C:\Users\Moritz\OneDrive - TU Wien\Studium\S23\SGP\Empire\binaries\agents"
+rm "C:\Users\Moritz\Desktop\Projekte\Empire\empire-game\binaries\agents\Imperion-*.jar"
+mv build/libs/Imperion-*-exe.jar "C:\Users\Moritz\Desktop\Projekte\Empire\empire-game\binaries\agents"
