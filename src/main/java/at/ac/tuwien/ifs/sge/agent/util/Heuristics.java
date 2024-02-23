@@ -2,51 +2,69 @@ package at.ac.tuwien.ifs.sge.agent.util;
 
 import at.ac.tuwien.ifs.sge.agent.Imperion;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
-import at.ac.tuwien.ifs.sge.game.empire.map.Position;
-import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireCity;
-import at.ac.tuwien.ifs.sge.game.empire.model.map.EmpireProductionState;
 import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnitType;
 
 import java.util.Map;
 
 /**
- * This class contains different heuristic approaches to determine a winning game state,
- * which is used after the MCTS is finished, in order to backpropagate the results
+ * At the start of a new MCTS round to calculate the next best move in the game, resetHeuristics() is called
+ * The range minHeuristicValue and maxHeuristicValue are then dynamically adjusted based on ranges of
+ * heuristic values encountered in the current MCTS round
+ *
+ * This class is used for calculating a normalized heuristic value for a given game to determine
+ * whether or not this game is good or bad
  */
 public class Heuristics {
 
-    private static final double MAX_GAME_TIME_MS = 300000.0;
+    // Only increases
+    private static Double minHeuristicValue = Double.MAX_VALUE;
+
+    // Only decreases
+    private static Double maxHeuristicValue = Double.MIN_VALUE;
 
     /**
-     * A game state is considered a winner, when it occupies more than half of the cities visible && ...
+     * Determines the normalized heuristic value
      */
-    public static boolean isWinner(Empire game, int playerId) {
+    public static double determineNormalizedHeuristicValue(Empire game, int playerId) {
 
-        //logHeuristics(game, playerId);
-        // gameDurationMs = current game duration + game time past due to game.advance(...)
-        var gameDurationMs = Imperion.GAME_DURATION_MS + game.getGameClock().getGameDurationMs();
+        // Determine heuristic value
+        double value = determineHeuristicValue(game, playerId);
 
-        Long occupation_ratio = Heuristics.cityOccupationRatio(game, playerId);
-        if(occupation_ratio == null || occupation_ratio <= 0.5) return false;
+        // Update min and max heuristic
+        if(value < minHeuristicValue) minHeuristicValue = value;
+        if(value > maxHeuristicValue) maxHeuristicValue = value;
 
-        // Does not work, because simulations ends in partial infornation exception
-        // IMPORTANT: This heuristic won't work if the map is bigger/smaller than then empire map (30 x 30),
-        // in that case, just remove line below
-        // Imperion.logger.info(mapDiscoveryRatio(game, playerId));
-        // return mapDiscoveryRatio(game, playerId) > mapDiscoveryThreshold(gameDurationMs);
+        double range = (maxHeuristicValue - minHeuristicValue);
+        // Check if range is zero, which is the case at the very beginning
+        var normalizedValue = (range != 0) ? (value - minHeuristicValue) / range : 0.5;
 
-        return unitProductionTotalTime(game, playerId) > unitProductionTotalTimeThreshold(gameDurationMs);
+        // Normalize value
+        return normalizedValue;
     }
 
-    private static Long cityOccupationRatio(Empire game, int playerId) {
+
+    /**
+     * Heuristic Value is determined the following value:
+     * value = cityOccupationRatio * 10
+     */
+    private static double determineHeuristicValue(Empire game, int playerId) {
+        double occupation_ratio = Heuristics.cityOccupationRatio(game, playerId);
+
+        double unitCount = game.getUnitsByPlayer(playerId).size();
+
+        return occupation_ratio * 10 + unitCount + mapDiscoveryRatio(game, playerId) * 100;
+    }
+
+
+    private static Double cityOccupationRatio(Empire game, int playerId) {
         // Visible Cities
         var visibleCities = game.getCitiesByPosition().values();
-        var playerCityCount = visibleCities.stream()
+        double playerCityCount = visibleCities.stream()
                 .filter(city -> city.getPlayerId() == playerId)
                 .count();
 
         // Avoid dividing by 0
-        if (playerCityCount == 0) return null;
+        if (playerCityCount == 0) return 0.0;
 
         return playerCityCount / visibleCities.size();
     }
@@ -63,18 +81,14 @@ public class Heuristics {
 
         return discoveredPositionCount / allPositionsCount;
     }
-    private static double mapDiscoveryThreshold(Long duration) {
-        // This is the threshold level
-        // After one minute 20% of the map should be discovered
 
-        double thresholdValue = 0;
-        double startDelay = 10000;
-        if(duration >= startDelay){
-            thresholdValue = Math.min(1.0, (duration - startDelay) / Imperion.MAX_GAME_DURATION_MS * 0.5);
-        }
-        return thresholdValue;
+    /**
+     * Resets Heuristics
+     */
+    public static void resetHeuristics(){
+        minHeuristicValue = Double.MAX_VALUE;
+        maxHeuristicValue = Double.MIN_VALUE;
     }
-
 
     private static Long unitStrengthHeuristic(Empire game, int playerId){
         // Sum the total of units
@@ -92,29 +106,10 @@ public class Heuristics {
         return null;
     }
 
-    /**
-     * TODO: Change to incorporate multiple cities
-     * TODO: Needs to also take dead units into calculation
-     */
-    private static int unitProductionTotalTime(Empire game, int playerId){
-        return game.getUnitsByPlayer(playerId).stream()
-                .mapToInt(EmpireUnitType::getProductionTime)
-                .sum();
-    }
-
-    private static double unitProductionTotalTimeThreshold(Long duration){
-        // As time progresses a higher threshold could even be better;
-        return (duration / 1000.0) * 0.5;
-    }
-
     public static void logHeuristics(Empire game, int playerId) {
-        var duration = Imperion.GAME_DURATION_MS + game.getGameClock().getGameDurationMs();
-
         Imperion.logger.info("Debugging Heuristics");
-        Imperion.logger.info(duration);
-        Imperion.logger.info("cityOccupationRatio: " + cityOccupationRatio(game, playerId) + ", cityOccupationThreshold: 0.5");
+        Imperion.logger.info("cityOccupationRatio: " + cityOccupationRatio(game, playerId));
         //Imperion.logger.info("mapDiscoveryRatio: " + mapDiscoveryRatio(game, playerId) + ", mapDiscoveryThreshold: " + mapDiscoveryThreshold(duration));
-        Imperion.logger.info("unitProductionTotalTime: " + unitProductionTotalTime(game, playerId) + ", unitProductionTotalTimeThreshold: " + unitProductionTotalTimeThreshold(duration));
-        Imperion.logger._info_();
+       Imperion.logger._info_();
     }
 }

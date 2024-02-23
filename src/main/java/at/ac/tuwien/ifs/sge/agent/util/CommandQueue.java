@@ -3,6 +3,7 @@ package at.ac.tuwien.ifs.sge.agent.util;
 import at.ac.tuwien.ifs.sge.agent.Imperion;
 import at.ac.tuwien.ifs.sge.agent.util.MacroAction.*;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
+import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.CombatStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.ProductionStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.stop.MovementStopOrder;
@@ -13,13 +14,13 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 public class CommandQueue {
-    private Map<UUID, Queue<EmpireEvent>> unitCommandQueue;
-    private Map<Position, Queue<EmpireEvent>> cityCommandQueue;
+    private Map<UUID, ArrayDeque<EmpireEvent>> unitCommandQueue;
+    private Map<Position, ArrayDeque<EmpireEvent>> cityCommandQueue;
 
     // This lets the MCTS do nothing
     public boolean doNothing = false;
 
-    public CommandQueue(Map<UUID, Queue<EmpireEvent>> unitCommandQueue, Map<Position, Queue<EmpireEvent>> cityCommandQueue) {
+    public CommandQueue(Map<UUID, ArrayDeque<EmpireEvent>> unitCommandQueue, Map<Position, ArrayDeque<EmpireEvent>> cityCommandQueue) {
         this.unitCommandQueue = unitCommandQueue;
         this.cityCommandQueue = cityCommandQueue;
     }
@@ -60,9 +61,10 @@ public class CommandQueue {
     public void addCommand(EmpireEvent event){
         if(event instanceof ProductionStartOrder productionAction) addCityCommand(productionAction.getCityPosition(), productionAction);
         else if(event instanceof ProductionStopOrder productionStopOrder) addCityCommand(productionStopOrder.getCityPosition(), productionStopOrder);
-        else if(event instanceof MovementStartOrder movementAction) addUnitCommand(movementAction.getUnitId(), movementAction);
+        else if(event instanceof MovementStartOrder movementStartOrder) addUnitCommand(movementStartOrder.getUnitId(), movementStartOrder);
         else if(event instanceof MovementStopOrder movementStopOrder) addUnitCommand(movementStopOrder.getUnitId(), movementStopOrder);
         else if(event instanceof WaitEvent waitEvent) addCityCommand(waitEvent.getEmpireCityPosition(), waitEvent);
+        else if(event instanceof CombatStartOrder combatStartOrder) addUnitCommand(combatStartOrder.getAttackerId(), combatStartOrder);
         else Imperion.logger.debug("Unknown event: " + event);
     }
 
@@ -74,11 +76,11 @@ public class CommandQueue {
         if(!(macroAction instanceof ScheduleNothingMacroAction)) for (var event : macroAction.getAtomicActions()) addCommand(event);
     }
 
-    public Map<UUID, Queue<EmpireEvent>> getUnitCommandQueue() {
+    public Map<UUID, ArrayDeque<EmpireEvent>> getUnitCommandQueue() {
         return unitCommandQueue;
     }
 
-    public Map<Position, Queue<EmpireEvent>> getCityCommandQueue() {
+    public Map<Position, ArrayDeque<EmpireEvent>> getCityCommandQueue() {
         return cityCommandQueue;
     }
 

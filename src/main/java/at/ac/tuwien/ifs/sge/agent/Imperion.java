@@ -25,12 +25,6 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     private static final int DECISION_PACE = 2000;
     public static Logger logger;
 
-    public static Long START_TIME_MS;
-    public static Long GAME_DURATION_MS;
-
-    // normal 5min game
-    public static Long MAX_GAME_DURATION_MS = 300000L;
-
     public static void main(String[] args) {
         var playerId = getPlayerIdFromArgs(args);
         var playerName = getPlayerNameFromArgs(args);
@@ -82,7 +76,6 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
      */
     private void play(){
         treeSearch = new MCTS(this);
-        START_TIME_MS = System.currentTimeMillis();
 
         List<EmpireEvent> lastDeterminedActions = null;
 
@@ -99,12 +92,11 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
         while (true){
             log.trace("Start of main loop in play()");
             log._info_();
+
             try{
                 log.trace("Start of the try-catch block");
 
                 Empire nextGameState = copyGame();
-                GAME_DURATION_MS = System.currentTimeMillis() - START_TIME_MS;
-                nextGameState.getGameClock().setGameTimeMs(GAME_DURATION_MS);
 
                 // Apply the next actions to the copied game
                 // Only schedule events, when it has not already been done on the server side
@@ -118,11 +110,16 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 nextGameState.advance(DECISION_PACE);
 
                 // Init MCTS Tree
-                var gameStateTree = new DoubleLinkedTree<>(new ImperionGameNode(nextGameState, playerId,null, commandQueues, null));
+                var rootNode = new ImperionGameNode(nextGameState, playerId,null, commandQueues, null);
+                Imperion.logger.info("Idle Units: " +rootNode.idleUnits);
+                Imperion.logger.info("Ready Units: " +rootNode.readyUnits);
+                var gameStateTree = new DoubleLinkedTree<>(rootNode);
 
-                // Heuristics.logHeuristics(nextGameState, playerId);
 
                 long timeForCalculations = System.currentTimeMillis() + DECISION_PACE;
+
+                // Reset Heuristic Dynamic Range
+                Heuristics.resetHeuristics();
 
                 // Build MCTS Tree
                 while (System.currentTimeMillis() < timeForCalculations){
@@ -143,11 +140,11 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
                     log.trace("Start simulation MCTS");
                     // Simulate until the simulation depth is reached and determine winners
-                    var winners = treeSearch.simulation(expandedLeaf, timeForCalculations);
+                    var evaluation = treeSearch.simulation(expandedLeaf, timeForCalculations);
                     log.trace("End simulation MCTS");
 
                     log.trace("Start backPropagation MCTS");
-                    treeSearch.backPropagation(expandedLeaf, winners);
+                    treeSearch.backPropagation(expandedLeaf, evaluation);
                     log.trace("End backPropagation MCTS");
 
                     log.trace("End of MCTS calculations in play()");
@@ -158,7 +155,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
                 var mostVisitedNode = Collections.max(gameStateTree.getChildren(), treeSearch.getTreeMoveComparator()).getNode();
                 for (var child : gameStateTree.getChildren()) {
-                    log.info("Action taken: " + child.getNode().getActionsTaken() + "(" + child.getNode().getMacroAction().getType() +") visits: " + child.getNode().getVisits() + " wins: " + child.getNode().getWinsForPlayer(playerId));
+                    log.info("Action taken: " + child.getNode().getActionsTaken() + "(" + child.getNode().getMacroAction().getType() +") visits: " + child.getNode().getVisits() + " wins: " + child.getNode().getEvaluationForPlayer(playerId));
                 }
 
                 lastDeterminedActions = mostVisitedNode.getActionsTaken();
@@ -173,6 +170,7 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
                 // If best action is to do nothing, just continue without sending action to server
                 if(lastDeterminedActions == null) continue;
 
+                // Send actions to server
                 for (int i = 0; i < lastDeterminedActions.size(); i++) {
                     sendAction(lastDeterminedActions.get(i), System.currentTimeMillis() + 50 + i);
                 }
