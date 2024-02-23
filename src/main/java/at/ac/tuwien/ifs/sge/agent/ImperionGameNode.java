@@ -17,7 +17,6 @@ import at.ac.tuwien.ifs.sge.game.empire.model.units.EmpireUnitState;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * This class represents a node of the MCTS Tree which contains information about the current game state
@@ -36,7 +35,8 @@ public class ImperionGameNode {
     // Unexplored actions
     private Stack<MacroAction> unexploredActions = new Stack<>();
 
-    private final int[] winsForPlayer;
+    // Saves the heuristic value of this node
+    private final double[] evaluation;
     private int visits = 0;
 
     // Units which are idle
@@ -54,13 +54,15 @@ public class ImperionGameNode {
     // Executed MacroAction
     private final MacroAction macroAction;
 
+    private final static Random random = new Random();
+
     public ImperionGameNode(Empire gameState, int nextPlayerId ,List<EmpireEvent> actionsTaken, CommandQueue[] commandQueues, MacroAction macroAction) {
         this.gameState = gameState;
         this.nextPlayerId = nextPlayerId;
         this.actionsTaken = actionsTaken;
         this.commandQueues = commandQueues;
         this.macroAction = macroAction;
-        winsForPlayer = new int[gameState.getNumberOfPlayers()];
+        evaluation = new double[gameState.getNumberOfPlayers()];
 
         idleUnits = gameState.getUnitsByPlayer(nextPlayerId).stream().filter(unit -> unit.getState() == EmpireUnitState.Idle).collect(Collectors.toSet());
 
@@ -104,16 +106,16 @@ public class ImperionGameNode {
         // If all units have commands, just return
         if(idleUnits.isEmpty() || readyUnits.isEmpty()) return actions;
 
-        addProductionMacroActionIfPossible(actions, playerId);
+        addProductionMacroActionIfPossible(actions);
 
-        addExpansionMacroActionIfPossible(actions);
+        addExpansionMacroActionIfPossible(actions, playerId);
 
         addExplorationMacroActionIfPossible(actions, playerId);
 
         return actions;
     }
 
-    private void addProductionMacroActionIfPossible(Set<MacroAction> actions, int playerId) {
+    private void addProductionMacroActionIfPossible(Set<MacroAction> actions) {
 
         if(readyCities.isEmpty()) return;
 
@@ -124,7 +126,7 @@ public class ImperionGameNode {
 
     }
 
-    private void addExpansionMacroActionIfPossible(Set<MacroAction> actions) {
+    private void addExpansionMacroActionIfPossible(Set<MacroAction> actions, int playerId) {
 
         // Check if unoccupied cities are in sight
         var unoccupiedCities = gameState.getCitiesByPosition().values().stream()
@@ -139,7 +141,8 @@ public class ImperionGameNode {
         // Find nearest unit from city
         var nearestUnitFromCity = findClosestUnit(city.getPosition(), readyUnits);
 
-        var moveEvents = getMovementActionsForUnit(nearestUnitFromCity, city.getPosition());
+        List<EmpireEvent> moveEvents = BFS.findShortestPath(nearestUnitFromCity, city.getPosition(), gameState, playerId);
+
         if(moveEvents == null) return;
 
         actions.add(new ExpansionMacroAction(moveEvents));
@@ -148,19 +151,20 @@ public class ImperionGameNode {
 
     private void addExplorationMacroActionIfPossible(Set<MacroAction> actions, int playerId) {
 
-        var farthestAwayPosition = getFarthestAwayPosition(playerId);
+        Position destination = null;
+        if(random.nextDouble() > 0.6) destination = getFarthestAwayPosition(playerId); else destination = Util.selectRandom(getUnknownPositions(playerId));
 
         // If all positions are known return
-        if(farthestAwayPosition == null) return;
+        if(destination == null) return;
 
-        var nearestUnitFromFarthestTile = findClosestUnit(farthestAwayPosition, readyUnits);
+        var nearestUnitFromFarthestTile = findClosestUnit(destination, readyUnits);
 
-        var moveEvents = getMovementActionsForUnit(nearestUnitFromFarthestTile, farthestAwayPosition);
+        var moveEvents = BFS.findShortestPath(nearestUnitFromFarthestTile, destination, gameState, playerId);
 
         if(moveEvents == null) return;
 
         // Only add first three moves
-        actions.add(new ExplorationMacroAction(moveEvents.subList(0,3)));
+        actions.add(new ExplorationMacroAction(moveEvents));
     }
 
 
@@ -180,7 +184,7 @@ public class ImperionGameNode {
     }
 
     /**
-     * Returns position which is the farthest away from discovered positions
+     * Returns position which is the farthest away from all discovered positions
      */
     public Position getFarthestAwayPosition(int playerId) {
         var knownPositions = gameState.getBoard().getDiscoveredByPosition().entrySet().stream()
@@ -189,62 +193,52 @@ public class ImperionGameNode {
                 .toList();
 
         var unknownPositions = new Stack<Position>();
-        unknownPositions.addAll(gameState.getBoard().getDiscoveredByPosition().entrySet().stream()
-                .filter(entry -> !entry.getValue()[playerId])
-                .map(Map.Entry::getKey)
-                .toList());
+        unknownPositions.addAll(getUnknownPositions(playerId));
 
-
-        double maxDistance = -1;
+        double maxSumOfDistances = -1;
         Position destination = null;
         while (!unknownPositions.isEmpty()){
-            // If there are unknown tiles, select the farthest one from all known tiles (where we can move to).
+            // If there are unknown tiles, select the one which is the farthest away from all known tiles,
+            // which means the sum of all distances from known to certain unknown tile is the greatest
+
             var unknownPosition = unknownPositions.pop();
+            double dists = 0;
+
             for (var knownPosition: knownPositions) {
-                double dist = Imperion.getEuclideanDistance(knownPosition, unknownPosition);
-                if (dist > maxDistance) {
-                    maxDistance = dist;
-                    destination = unknownPosition;
-                }
+                dists += Imperion.getEuclideanDistance(knownPosition, unknownPosition);
+            }
+
+            if (dists > maxSumOfDistances) {
+                maxSumOfDistances = dists;
+                destination = unknownPosition;
             }
         }
 
         return destination;
     }
 
-    public List<EmpireEvent> getMovementActionsForUnit(EmpireUnit unit, Position destination){
-        AStar aStar = new AStar(unit.getPosition(),destination,this,getNextPlayerId());
-
-        AStarNode currentNode = aStar.findPath();
-
-        // If no path was found
-        if(currentNode == null) return null;
-
-        var orders = new ArrayDeque<EmpireEvent>();
-
-        while (currentNode != null) {
-            orders.addFirst(new MovementStartOrder(unit.getId(),currentNode.getPosition()));
-
-            // Next Position to move to
-            currentNode = currentNode.getPrev();
-        }
-
-        // Remove current position
-        orders.poll();
-
-        return orders.stream().toList();
+    /**
+     * Return unknown positions from player
+     */
+    private List<Position> getUnknownPositions(int playerId){
+        return gameState.getBoard().getDiscoveredByPosition().entrySet().stream()
+                .filter(entry -> !entry.getValue()[playerId])
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
-    public int incrementWinsForPlayer(int playerId) {
-        return ++winsForPlayer[playerId];
+
+    public double incrementEvaluation(double increment, int playerId) {
+        evaluation[playerId] += increment;
+        return evaluation[playerId];
     }
 
     public int incrementVisits() {
         return ++visits;
     }
 
-    public int getWinsForPlayer(int playerId) {
-        return winsForPlayer[playerId];
+    public double getEvaluationForPlayer(int playerId) {
+        return evaluation[playerId];
     }
 
     public int getVisits() {
@@ -289,7 +283,7 @@ public class ImperionGameNode {
         return "ImperionGameNode{" +
                 "nextPlayerId=" + nextPlayerId +
                 ", actionsTaken=" + actionsTaken +
-                ", winsForPlayer=" + Arrays.toString(winsForPlayer) +
+                ", winsForPlayer=" + Arrays.toString(evaluation) +
                 ", visits=" + visits +
                 ", commandQueues=" + Arrays.toString(commandQueues) +
                 '}';
