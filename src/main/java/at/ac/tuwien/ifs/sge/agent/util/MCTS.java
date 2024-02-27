@@ -11,10 +11,12 @@ import at.ac.tuwien.ifs.sge.core.util.Util;
 import at.ac.tuwien.ifs.sge.core.util.tree.DoubleLinkedTree;
 import at.ac.tuwien.ifs.sge.core.util.tree.Tree;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.EmpireEvent;
+import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.CombatStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.communication.event.order.start.MovementStartOrder;
 import at.ac.tuwien.ifs.sge.game.empire.core.Empire;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class MCTS {
@@ -23,7 +25,7 @@ public class MCTS {
     private Comparator<Tree<ImperionGameNode>> selectionComparator;
     private Comparator<Tree<ImperionGameNode>> treeMoveComparator;
 
-    private static final int DEFAULT_SIMULATION_PACE_MS = 1000;
+    private static final int DEFAULT_SIMULATION_PACE_MS = 2000;
     private static final int DEFAULT_SIMULATION_DEPTH = 20;
 
     public MCTS(Imperion agent) {
@@ -92,8 +94,6 @@ public class MCTS {
                 actionsToExpand.add(gameState.popUnexploredAction());
             }
             actionsToExpand.add(new DoNothingMacroAction());
-
-            Imperion.logger.info("Actions to expand in root: " + actionsToExpand);
         } else {
             // If leaf explore action of doing nothing first
             if (bestNode.isLeaf())
@@ -129,7 +129,7 @@ public class MCTS {
             var commandQueues = gameState.copyCommandQueues();
 
             // Add macroAction to commandQueue
-            commandQueues[playerOnTurn].addCommand(macroAction);
+            commandQueues[playerOnTurn].addCommand(macroAction, false);
 
             List<EmpireEvent> executedActions = null;
 
@@ -163,9 +163,7 @@ public class MCTS {
         var playerToTurn = gameState.getNextPlayerId();
         var depth = 0;
 
-
-        Imperion.logger.debug("Simulate on: " + gameState);
-        Imperion.logger.debug(" with " + Arrays.toString(commandQueues));
+        Imperion.logger.trace("Simulation of: " + gameState);
         try {
             while (!game.isGameOver() && depth++ <= DEFAULT_SIMULATION_DEPTH && System.currentTimeMillis() < nextDecisionTime
                     // Check if command queues are both empty
@@ -186,6 +184,8 @@ public class MCTS {
             Imperion.logger.trace("simulation reached invalid game state (partial information)");
         }
 
+        Imperion.logger.trace("End of simulation");
+        Heuristics.debHeuristics(game, 0);
         return evaluateGameState(game);
     }
 
@@ -197,13 +197,25 @@ public class MCTS {
 
         var scheduledEvents = new ArrayList<EmpireEvent>();
 
-        if(commandQueues[playerToTurn].doNothing) commandQueues[playerToTurn].doNothing = false;
+        if(commandQueues[playerToTurn].doNothing) {commandQueues[playerToTurn].doNothing = false;}
         else{
             // Try to schedule the next action in queue for each unit and city
             for (var command : commandQueues[playerToTurn].getUnitCommandQueue().entrySet()) {
                 Imperion.logger.trace("Next command for Unit with ID: " + command.getKey());
+                var unit = game.getUnit(command.getKey());
+
                 // Only schedule next command if unit is not busy
-                if(game.getUnit(command.getKey()).isIdle()) schedule(game, playerToTurn, command, scheduledEvents); else Imperion.logger.trace("Not Idle");
+                if(!unit.isIdle()) continue;
+
+                // Check if unit can attack enemy unit
+                var possibleCombatActionsByUnit = game.getPossibleActions().stream()
+                        .filter(event -> event instanceof CombatStartOrder combatStartOrder && combatStartOrder.getAttackerId() == unit.getId())
+                        .collect(Collectors.toSet());
+
+                // If possible, add this action to queue, but at the front of its queue
+                if(!possibleCombatActionsByUnit.isEmpty()) commandQueues[playerToTurn].addCommand(Util.selectRandom(possibleCombatActionsByUnit), true);
+
+                schedule(game, playerToTurn, command, scheduledEvents);
             }
             for (var command : commandQueues[playerToTurn].getCityCommandQueue().entrySet()) {
                 Imperion.logger.trace("Next command for City with Position: " + command.getKey());
@@ -246,9 +258,6 @@ public class MCTS {
                     // If movement was not possible, because of ally unit on destination, add order back to queue and try in next iteration
                     if(isHeldByPlayerId == playerToTurn) command.getValue().addFirst(action);
                 }
-
-                // TODO: What happens if movement is not possible because of enemy?
-                // Maybe schedule AttackAction
 
                 // If action is not null and not valid, do nothing
                 return false;

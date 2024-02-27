@@ -16,13 +16,14 @@ import at.ac.tuwien.ifs.sge.game.empire.map.Position;
 
 import java.util.*;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
     private Future<?> thread;
 
     private int playerId;
     private static MCTS treeSearch;
-    private static final int DECISION_PACE = 2000;
+    private static final int DECISION_PACE = 300;
     public static Logger logger;
 
     public static void main(String[] args) {
@@ -98,6 +99,9 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
                 Empire nextGameState = copyGame();
 
+                // Reset Heuristic Dynamic Range
+                Heuristics.resetHeuristics(nextGameState);
+
                 // Apply the next actions to the copied game
                 // Only schedule events, when it has not already been done on the server side
                 if(lastDeterminedActions != null)
@@ -111,15 +115,10 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
                 // Init MCTS Tree
                 var rootNode = new ImperionGameNode(nextGameState, playerId,null, commandQueues, null);
-                Imperion.logger.info("Idle Units: " +rootNode.idleUnits);
-                Imperion.logger.info("Ready Units: " +rootNode.readyUnits);
+
                 var gameStateTree = new DoubleLinkedTree<>(rootNode);
 
-
                 long timeForCalculations = System.currentTimeMillis() + DECISION_PACE;
-
-                // Reset Heuristic Dynamic Range
-                Heuristics.resetHeuristics();
 
                 // Build MCTS Tree
                 while (System.currentTimeMillis() < timeForCalculations){
@@ -154,18 +153,15 @@ public class Imperion extends AbstractRealTimeGameAgent<Empire, EmpireEvent> {
 
 
                 var mostVisitedNode = Collections.max(gameStateTree.getChildren(), treeSearch.getTreeMoveComparator()).getNode();
+
                 for (var child : gameStateTree.getChildren()) {
-                    log.info("Action taken: " + child.getNode().getActionsTaken() + "(" + child.getNode().getMacroAction().getType() +") visits: " + child.getNode().getVisits() + " wins: " + child.getNode().getEvaluationForPlayer(playerId));
+                    log.info("Action " + child.getNode().getMacroAction().getType() + ", visits: " + child.getNode().getVisits() + " , wins: " + Math.round(child.getNode().getEvaluationForPlayer(playerId) * 100) / 100.0) ;
                 }
 
                 lastDeterminedActions = mostVisitedNode.getActionsTaken();
-                log.info("Determined next action: " + lastDeterminedActions);
+                log.info("Determined next action (" + mostVisitedNode.getMacroAction() + ") : " + lastDeterminedActions);
 
                 commandQueues = mostVisitedNode.copyCommandQueues();
-                log.info("Current command queues: ");
-                for(var commandQueue : commandQueues){
-                    log.info(commandQueue);
-                }
 
                 // If best action is to do nothing, just continue without sending action to server
                 if(lastDeterminedActions == null) continue;
