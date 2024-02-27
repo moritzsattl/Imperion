@@ -21,9 +21,7 @@ public class BFS {
 
     /**
      * Returns null if path was not found
-     * Returns all movement actions that are possible which lead towards the destination
-     * // TODO: What happens if a certain action is rejected, because enemy or ally is in the pathway
-     * // Solution: Check if movement is possible before scheduling movementAction
+     * Returns shortest path in the direction of the destination, but doesn't return movement action for undiscovered tiles
      */
     public static List<EmpireEvent> findShortestPath(EmpireUnit unit, Position destination, Empire game, int playerId){
         Imperion.logger.trace("Start findShortestPath " + unit + " to " + destination);
@@ -42,7 +40,6 @@ public class BFS {
             node = node.parent;
         }
 
-
         Imperion.logger.trace("Path is :" + actions);
         Imperion.logger.trace("End findShortestPath " + unit + " to " + destination);
 
@@ -51,7 +48,7 @@ public class BFS {
     }
 
     private static Node bfs(Position source, Position destination, Empire game, int playerId) {
-        Imperion.logger.trace("Start bfs");
+        //Imperion.logger.trace("Start bfs");
 
         var queue = new ArrayDeque<Node>();
 
@@ -65,7 +62,6 @@ public class BFS {
 
         while (!queue.isEmpty()){
             var node = queue.poll();
-            Imperion.logger.trace(node);
 
             if(node.position.equals(destination)) return node;
 
@@ -73,9 +69,6 @@ public class BFS {
 
             for(var neighbour : neighbours){
                 if(discovered.contains(neighbour.position)) continue;
-
-                Imperion.logger.trace("Neighbour:" + neighbour);
-
                 discovered.add(neighbour.position);
                 neighbour.parent = node;
                 queue.add(neighbour);
@@ -86,7 +79,7 @@ public class BFS {
         return null;
     }
 
-    private static class Node {
+    public static class Node {
         public Position position;
 
         public Node parent;
@@ -100,7 +93,7 @@ public class BFS {
          * neighbours are positions where its corresponding tile is null (not discovered yet)
          */
         public List<Node> getNeighbours(Empire game, int playerId) {
-            Imperion.logger.trace("Start getNeighbours");
+            //Imperion.logger.trace("Start getNeighbours");
             var neighbours = new ArrayList<Node>();
 
             // 8-directional movement
@@ -114,7 +107,7 @@ public class BFS {
 
                 var tile = game.getBoard().getEmpireTiles()[nextY][nextX];
 
-                Imperion.assertWithMessage(tile != null, "Tile is null Pos: (" + nextX + " " + nextY+")");
+                //Imperion.assertWithMessage(tile != null, "Tile is null Pos: (" + nextX + " " + nextY+")");
 
                 // tile is not visible yet, just imagine it is possible to move there
                 if(tile == null) {neighbours.add(new Node(new Position(nextX, nextY))); continue;}
@@ -129,8 +122,8 @@ public class BFS {
                 if(!enemyTerritory && tile.getMaxOccupants() != 0 && remainingSpace) neighbours.add(new Node(tile.getPosition()));
             }
 
-            Imperion.logger.trace("Neighbours" + neighbours);
-            Imperion.logger.trace("End getNeighbours");
+            //Imperion.logger.trace("Neighbours" + neighbours);
+            //Imperion.logger.trace("End getNeighbours");
             return neighbours;
         }
 
