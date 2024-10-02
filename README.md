@@ -16,4 +16,6 @@ This version of the game agent was built as a course project at the University o
 
 [SGP___Final_Hand_in.pdf](https://github.com/user-attachments/files/17227309/SGP___Final_Hand_in.pdf)
 
-Interal Note regarding the Commit History: All commits are duplicated, since I had to sign them. There would have probably been a better way to accomplish it, but it's not the end of the world.
+# Commit History
+
+All commits are duplicated, since I had to sign them retroactively. There would have probably been a better way to accomplish it, but it's not the end of the world.
