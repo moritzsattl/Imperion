@@ -12,7 +12,7 @@ This new approach allows the agent to make decisions more efficiently and strate
  
 # ImperionV1.4.6
 
-This [version](https://github.com/moritzsattl/Imperion/commit/fa9e30595143c5ce33c6876533092c07a751a199) of the game agent was built as a course project at the University of Technology in Vienna. The development and its challenges were summarized in the document below.
+This version of the game agent was built as a course project at the University of Technology in Vienna. The development and its challenges were summarized in the document below.
 
 [SGP___Final_Hand_in.pdf](https://github.com/user-attachments/files/17227309/SGP___Final_Hand_in.pdf)
 
