@@ -10,7 +10,7 @@ The most important improvement, however, was reducing the search space by limiti
 
 This new approach allows the agent to make decisions more efficiently and strategically, improving both performance and clarity.
  
-# Imperion
+# ImperionV1.4.6
 
 This [version](https://github.com/moritzsattl/Imperion/commit/fa9e30595143c5ce33c6876533092c07a751a199) of the game agent was built as a course project at the University of Technology in Vienna. The development and its challenges were summarized in the document below.
 
